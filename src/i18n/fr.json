@@ -1,0 +1,97 @@
+{
+  "common": {
+    "brand": "CLUTCH",
+    "pendingOnboardingSaveError": "Votre compte a été créé, mais nous n'avons pas pu enregistrer la configuration restante. Veuillez réessayer.",
+    "pendingOnboardingCompletionError": "Nous n'avons pas pu terminer la configuration de votre compte. Veuillez vous connecter et réessayer.",
+    "profileLoadError": "Nous n'avons pas pu charger le profil de votre compte. Veuillez essayer de vous reconnecter.",
+    "profileMissingError": "Le profil de votre compte n'est pas encore prêt. Veuillez essayer de vous reconnecter."
+  },
+  "landing": {
+    "title": "Gérez votre équipe au même endroit.",
+    "description": "Gestion d'équipes pour les programmes de hockey scolaire et les entraîneurs indépendants.",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte"
+  },
+  "signIn": {
+    "title": "Bon retour",
+    "description": "Utilisez l'adresse courriel et le mot de passe associés à votre compte Clutch.",
+    "emailLabel": "Adresse courriel",
+    "emailPlaceholder": "entraineur@exemple.com",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Votre mot de passe",
+    "missingCredentialsError": "Entrez votre adresse courriel et votre mot de passe.",
+    "submit": "Se connecter",
+    "submitting": "Connexion..."
+  },
+  "accountType": {
+    "title": "Êtes-vous entraîneur ou directeur?",
+    "description": "Choisissez le rôle qui correspond à votre utilisation de Clutch.",
+    "directorTitle": "Directeur",
+    "directorDescription": "Créez et gérez une organisation de hockey scolaire.",
+    "coachTitle": "Entraîneur",
+    "coachDescription": "Rejoignez une organisation scolaire ou gérez votre propre équipe."
+  },
+  "coachPath": {
+    "title": "Quel type d'entraîneur êtes-vous?",
+    "description": "Vous pouvez rejoindre une école avec son code ou démarrer une équipe indépendante.",
+    "joinTitle": "Rejoindre une organisation",
+    "joinDescription": "Utilisez le code d'accès transmis par le directeur de votre organisation.",
+    "independentTitle": "Entraîneur indépendant",
+    "independentDescription": "Créez une équipe sans rejoindre une organisation scolaire."
+  },
+  "directorSignup": {
+    "title": "Créez votre organisation",
+    "description": "Créez votre compte et l'organisation scolaire que vous dirigez.",
+    "nameLabel": "Votre nom",
+    "namePlaceholder": "Alex Morgan",
+    "organizationLabel": "Nom de l'organisation ou de l'école",
+    "organizationPlaceholder": "Hockey de l'école Centrale",
+    "emailLabel": "Adresse courriel",
+    "emailPlaceholder": "direction@exemple.com",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Créez un mot de passe",
+    "requiredError": "Remplissez tous les champs pour continuer.",
+    "submit": "Continuer",
+    "submitting": "Création de l'organisation...",
+    "confirmationPendingMessage": "Consultez votre courriel pour confirmer votre compte, puis connectez-vous afin de terminer la configuration de votre organisation.",
+    "onboardingError": "Impossible de créer votre organisation. Veuillez réessayer."
+  },
+  "joinOrganization": {
+    "title": "Rejoignez votre organisation",
+    "description": "Entrez le code fourni par votre directeur et le nom de l'équipe que vous entraînez.",
+    "nameLabel": "Votre nom",
+    "namePlaceholder": "Alex Morgan",
+    "emailLabel": "Adresse courriel",
+    "emailPlaceholder": "entraineur@exemple.com",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Créez un mot de passe",
+    "joinCodeLabel": "Code d'accès de l'organisation",
+    "joinCodePlaceholder": "ABC123",
+    "teamNameLabel": "Nom de l'équipe",
+    "teamNamePlaceholder": "Équipe M18",
+    "requiredError": "Remplissez tous les champs pour continuer.",
+    "submit": "Continuer",
+    "submitting": "Adhésion à l'organisation...",
+    "confirmationPendingMessage": "Consultez votre courriel pour confirmer votre compte, puis connectez-vous afin de terminer votre adhésion à l'organisation.",
+    "invalidCodeError": "Le code d'accès de l'organisation est invalide.",
+    "suspendedError": "Cette organisation est actuellement suspendue.",
+    "onboardingError": "Impossible de rejoindre l'organisation. Veuillez réessayer."
+  },
+  "independentCoachSignup": {
+    "title": "Configurez votre équipe",
+    "description": "Commencez avec votre propre équipe. Vous n'aurez pas besoin d'un code d'organisation.",
+    "nameLabel": "Votre nom",
+    "namePlaceholder": "Alex Morgan",
+    "emailLabel": "Adresse courriel",
+    "emailPlaceholder": "entraineur@exemple.com",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Créez un mot de passe",
+    "teamNameLabel": "Nom de l'équipe",
+    "teamNamePlaceholder": "Nord M16",
+    "requiredError": "Remplissez tous les champs pour continuer.",
+    "submit": "Continuer",
+    "submitting": "Création de l'équipe...",
+    "confirmationPendingMessage": "Consultez votre courriel pour confirmer votre compte, puis connectez-vous afin de terminer la configuration de votre équipe.",
+    "onboardingError": "Impossible de créer votre équipe. Veuillez réessayer."
+  }
+}

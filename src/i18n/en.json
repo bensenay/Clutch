@@ -1,0 +1,97 @@
+{
+  "common": {
+    "brand": "CLUTCH",
+    "pendingOnboardingSaveError": "Your account was created, but we could not save the remaining setup. Please try again.",
+    "pendingOnboardingCompletionError": "We could not finish setting up your account. Please sign in and try again.",
+    "profileLoadError": "We could not load your account profile. Please try signing in again.",
+    "profileMissingError": "Your account profile is not ready yet. Please try signing in again."
+  },
+  "landing": {
+    "title": "Run your team from one place.",
+    "description": "Team management for school hockey programs and independent coaches.",
+    "signIn": "Sign In",
+    "createAccount": "Create Account"
+  },
+  "signIn": {
+    "title": "Welcome back",
+    "description": "Use the email and password linked to your Clutch account.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "coach@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Your password",
+    "missingCredentialsError": "Enter your email and password.",
+    "submit": "Sign In",
+    "submitting": "Signing In..."
+  },
+  "accountType": {
+    "title": "Are you a coach or a director?",
+    "description": "Choose the role that matches how you will use Clutch.",
+    "directorTitle": "Director",
+    "directorDescription": "Create and manage a school hockey organization.",
+    "coachTitle": "Coach",
+    "coachDescription": "Join a school organization or manage your own team."
+  },
+  "coachPath": {
+    "title": "How will you coach?",
+    "description": "You can join a school using its code or start with an independent team.",
+    "joinTitle": "Join Organization",
+    "joinDescription": "Use the join code shared by your organization director.",
+    "independentTitle": "Independent Coach",
+    "independentDescription": "Create a team without joining a school organization."
+  },
+  "directorSignup": {
+    "title": "Create your organization",
+    "description": "Create your account and the school organization you direct.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "Alex Morgan",
+    "organizationLabel": "Organization or school name",
+    "organizationPlaceholder": "Central High Hockey",
+    "emailLabel": "Email",
+    "emailPlaceholder": "director@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Create a password",
+    "requiredError": "Complete every field to continue.",
+    "submit": "Continue",
+    "submitting": "Creating organization...",
+    "confirmationPendingMessage": "Check your email to confirm your account, then sign in to finish setting up your organization.",
+    "onboardingError": "Unable to create your organization. Please try again."
+  },
+  "joinOrganization": {
+    "title": "Join your organization",
+    "description": "Enter the code from your director and the team you coach.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "Alex Morgan",
+    "emailLabel": "Email",
+    "emailPlaceholder": "coach@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Create a password",
+    "joinCodeLabel": "Organization join code",
+    "joinCodePlaceholder": "ABC123",
+    "teamNameLabel": "Team name",
+    "teamNamePlaceholder": "Varsity",
+    "requiredError": "Complete every field to continue.",
+    "submit": "Continue",
+    "submitting": "Joining organization...",
+    "confirmationPendingMessage": "Check your email to confirm your account, then sign in to finish joining your organization.",
+    "invalidCodeError": "Invalid organization join code.",
+    "suspendedError": "This organization is currently suspended.",
+    "onboardingError": "Unable to join the organization. Please try again."
+  },
+  "independentCoachSignup": {
+    "title": "Set up your team",
+    "description": "Start with your own team. You will not need an organization code.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "Alex Morgan",
+    "emailLabel": "Email",
+    "emailPlaceholder": "coach@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Create a password",
+    "teamNameLabel": "Team name",
+    "teamNamePlaceholder": "Northside U16",
+    "requiredError": "Complete every field to continue.",
+    "submit": "Continue",
+    "submitting": "Creating team...",
+    "confirmationPendingMessage": "Check your email to confirm your account, then sign in to finish setting up your team.",
+    "onboardingError": "Unable to create your team. Please try again."
+  }
+}
