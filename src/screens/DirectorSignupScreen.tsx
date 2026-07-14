@@ -1,3 +1,4 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { Button, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -6,12 +7,16 @@ import { useAuth } from '../auth/AuthProvider';
 import { getFunctionErrorMessage } from '../auth/onboarding';
 import { pendingOnboarding } from '../auth/pendingOnboarding';
 import {
+  AuthFooterLink,
   AuthScreen,
   FormField,
   authStyles,
 } from '../components/AuthScreen';
+import type { AuthStackParamList } from '../navigation/types';
 
-export function DirectorSignupScreen() {
+type Props = NativeStackScreenProps<AuthStackParamList, 'DirectorSignup'>;
+
+export function DirectorSignupScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const {
     session,
@@ -25,6 +30,7 @@ export function DirectorSignupScreen() {
   const [error, setError] = useState('');
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasPendingConfirmation = Boolean(confirmationMessage);
 
   async function handleContinue() {
     if (!name.trim() || !organizationName.trim() || !email.trim() || !password) {
@@ -97,6 +103,9 @@ export function DirectorSignupScreen() {
   return (
     <AuthScreen
       description={t('directorSignup.description')}
+      footer={
+        <AuthFooterLink onPress={() => navigation.navigate('SignIn')} />
+      }
       title={t('directorSignup.title')}
     >
       <FormField
@@ -140,11 +149,20 @@ export function DirectorSignupScreen() {
       <Button
         disabled={isSubmitting}
         title={
-          isSubmitting
+          hasPendingConfirmation
+            ? t('authFooter.signIn')
+            : isSubmitting
             ? t('directorSignup.submitting')
             : t('directorSignup.submit')
         }
-        onPress={() => void handleContinue()}
+        onPress={() => {
+          if (hasPendingConfirmation) {
+            navigation.navigate('SignIn');
+            return;
+          }
+
+          void handleContinue();
+        }}
       />
     </AuthScreen>
   );

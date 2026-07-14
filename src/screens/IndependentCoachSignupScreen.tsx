@@ -1,3 +1,4 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { Button, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -6,12 +7,19 @@ import { useAuth } from '../auth/AuthProvider';
 import { getFunctionErrorMessage } from '../auth/onboarding';
 import { pendingOnboarding } from '../auth/pendingOnboarding';
 import {
+  AuthFooterLink,
   AuthScreen,
   FormField,
   authStyles,
 } from '../components/AuthScreen';
+import type { AuthStackParamList } from '../navigation/types';
 
-export function IndependentCoachSignupScreen() {
+type Props = NativeStackScreenProps<
+  AuthStackParamList,
+  'IndependentCoachSignup'
+>;
+
+export function IndependentCoachSignupScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const {
     session,
@@ -25,6 +33,7 @@ export function IndependentCoachSignupScreen() {
   const [error, setError] = useState('');
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasPendingConfirmation = Boolean(confirmationMessage);
 
   async function handleContinue() {
     if (!name.trim() || !email.trim() || !password || !teamName.trim()) {
@@ -99,6 +108,9 @@ export function IndependentCoachSignupScreen() {
   return (
     <AuthScreen
       description={t('independentCoachSignup.description')}
+      footer={
+        <AuthFooterLink onPress={() => navigation.navigate('SignIn')} />
+      }
       title={t('independentCoachSignup.title')}
     >
       <FormField
@@ -142,11 +154,20 @@ export function IndependentCoachSignupScreen() {
       <Button
         disabled={isSubmitting}
         title={
-          isSubmitting
+          hasPendingConfirmation
+            ? t('authFooter.signIn')
+            : isSubmitting
             ? t('independentCoachSignup.submitting')
             : t('independentCoachSignup.submit')
         }
-        onPress={() => void handleContinue()}
+        onPress={() => {
+          if (hasPendingConfirmation) {
+            navigation.navigate('SignIn');
+            return;
+          }
+
+          void handleContinue();
+        }}
       />
     </AuthScreen>
   );

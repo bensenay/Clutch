@@ -1,10 +1,19 @@
 {
   "common": {
     "brand": "CLUTCH",
+    "back": "Retour",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "notSet": "Non défini",
     "pendingOnboardingSaveError": "Votre compte a été créé, mais nous n'avons pas pu enregistrer la configuration restante. Veuillez réessayer.",
     "pendingOnboardingCompletionError": "Nous n'avons pas pu terminer la configuration de votre compte. Veuillez vous connecter et réessayer.",
     "profileLoadError": "Nous n'avons pas pu charger le profil de votre compte. Veuillez essayer de vous reconnecter.",
-    "profileMissingError": "Le profil de votre compte n'est pas encore prêt. Veuillez essayer de vous reconnecter."
+    "profileMissingError": "Le profil de votre compte n'est pas encore prêt. Veuillez essayer de vous reconnecter.",
+    "signOut": "Se déconnecter"
+  },
+  "authFooter": {
+    "alreadyHaveAccount": "Vous avez déjà un compte?",
+    "signIn": "Se connecter"
   },
   "landing": {
     "title": "Gérez votre équipe au même endroit.",
@@ -93,5 +102,57 @@
     "submitting": "Création de l'équipe...",
     "confirmationPendingMessage": "Consultez votre courriel pour confirmer votre compte, puis connectez-vous afin de terminer la configuration de votre équipe.",
     "onboardingError": "Impossible de créer votre équipe. Veuillez réessayer."
+  },
+  "home": {
+    "title": "Tableau d'équipe",
+    "description": "Bienvenue, {{name}}. Choisissez ce que vous voulez gérer aujourd'hui.",
+    "fallbackUser": "entraîneur",
+    "noSessionError": "Aucune session active.",
+    "profileError": "Impossible de charger votre profil.",
+    "directorTitle": "Espace directeur",
+    "directorDescription": "Consultez toutes les équipes de votre organisation ou gérez le code d'accès utilisé par les entraîneurs.",
+    "allTeamsButton": "Toutes les équipes",
+    "settingsButton": "Paramètres du directeur",
+    "activeTeamTitle": "Équipe active",
+    "activeTeamDescription": "{{teamName}} est active pour cette session.",
+    "noActiveTeamDescription": "Aucune équipe active n'est disponible pour le moment.",
+    "superAdminTitle": "Super administrateur",
+    "superAdminDescription": "Les outils de modération sont hors portée pour cette portion d'interface de la semaine 2."
+  },
+  "teamSwitcher": {
+    "title": "Changer d'équipe",
+    "description": "Choisissez l'équipe avec laquelle vous voulez travailler dans cette session.",
+    "loading": "Chargement de vos équipes...",
+    "error": "Impossible de charger vos équipes.",
+    "noDetails": "Aucun niveau ni saison défini"
+  },
+  "directorOnly": {
+    "title": "Accès réservé aux directeurs",
+    "description": "Cet écran est uniquement disponible pour les directeurs."
+  },
+  "directorAllTeams": {
+    "title": "Toutes les équipes",
+    "description": "Toutes les équipes de votre organisation apparaissent ici.",
+    "error": "Impossible de charger les équipes.",
+    "noSchoolError": "Votre organisation est introuvable.",
+    "emptyTitle": "Aucune équipe pour le moment",
+    "emptyDescription": "Les équipes apparaîtront ici lorsque des entraîneurs rejoindront l'organisation ou lorsque des équipes seront créées.",
+    "teamMeta": "Niveau : {{level}} / Saison : {{season}}"
+  },
+  "directorSettings": {
+    "title": "Paramètres du directeur",
+    "description": "Gérez les paramètres de l'organisation dont les entraîneurs ont besoin pendant l'inscription.",
+    "noSchoolError": "Votre organisation est introuvable.",
+    "loadError": "Impossible de charger les paramètres de votre organisation.",
+    "joinCodeTitle": "Code d'accès de l'organisation",
+    "joinCodeDescription": "Partagez ce code avec les entraîneurs pour qu'ils puissent rejoindre votre organisation.",
+    "regenerateButton": "Régénérer le code",
+    "regenerating": "Régénération...",
+    "regenerateSuccess": "Code d'accès mis à jour.",
+    "regenerateError": "Impossible de régénérer le code d'accès. Veuillez réessayer.",
+    "regenerateDuplicateError": "Impossible de générer un code unique. Veuillez réessayer.",
+    "confirmTitle": "Régénérer le code d'accès?",
+    "confirmDescription": "Cela invalide l'ancien code immédiatement. Toute personne ayant l'ancien code ne pourra plus rejoindre l'organisation.",
+    "confirmButton": "Régénérer"
   }
 }

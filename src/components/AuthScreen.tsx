@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -63,6 +64,31 @@ export function FormField({ label, style, ...props }: FormFieldProps) {
         {...props}
       />
     </View>
+  );
+}
+
+type AuthFooterLinkProps = {
+  onPress: () => void;
+};
+
+export function AuthFooterLink({ onPress }: AuthFooterLinkProps) {
+  const { t } = useTranslation();
+
+  function handlePress() {
+    try {
+      onPress();
+    } catch (error) {
+      console.error('Unable to navigate from auth footer.', error);
+    }
+  }
+
+  return (
+    <Pressable style={styles.footerLink} onPress={handlePress}>
+      <Text style={styles.footerText}>
+        {t('authFooter.alreadyHaveAccount')}{' '}
+        <Text style={styles.footerAction}>{t('authFooter.signIn')}</Text>
+      </Text>
+    </Pressable>
   );
 }
 
@@ -137,5 +163,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 50,
     paddingHorizontal: 14,
+  },
+  footerAction: {
+    color: '#b8442f',
+    fontWeight: '700',
+  },
+  footerLink: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  footerText: {
+    color: '#59636e',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

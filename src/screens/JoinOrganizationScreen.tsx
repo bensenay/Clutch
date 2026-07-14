@@ -1,3 +1,4 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { Button, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -6,12 +7,16 @@ import { useAuth } from '../auth/AuthProvider';
 import { getFunctionErrorMessage } from '../auth/onboarding';
 import { pendingOnboarding } from '../auth/pendingOnboarding';
 import {
+  AuthFooterLink,
   AuthScreen,
   FormField,
   authStyles,
 } from '../components/AuthScreen';
+import type { AuthStackParamList } from '../navigation/types';
 
-export function JoinOrganizationScreen() {
+type Props = NativeStackScreenProps<AuthStackParamList, 'JoinOrganization'>;
+
+export function JoinOrganizationScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const {
     session,
@@ -26,6 +31,7 @@ export function JoinOrganizationScreen() {
   const [error, setError] = useState('');
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasPendingConfirmation = Boolean(confirmationMessage);
 
   async function handleContinue() {
     if (
@@ -120,6 +126,9 @@ export function JoinOrganizationScreen() {
   return (
     <AuthScreen
       description={t('joinOrganization.description')}
+      footer={
+        <AuthFooterLink onPress={() => navigation.navigate('SignIn')} />
+      }
       title={t('joinOrganization.title')}
     >
       <FormField
@@ -170,11 +179,20 @@ export function JoinOrganizationScreen() {
       <Button
         disabled={isSubmitting}
         title={
-          isSubmitting
+          hasPendingConfirmation
+            ? t('authFooter.signIn')
+            : isSubmitting
             ? t('joinOrganization.submitting')
             : t('joinOrganization.submit')
         }
-        onPress={() => void handleContinue()}
+        onPress={() => {
+          if (hasPendingConfirmation) {
+            navigation.navigate('SignIn');
+            return;
+          }
+
+          void handleContinue();
+        }}
       />
     </AuthScreen>
   );

@@ -7,3 +7,9 @@ export type AuthStackParamList = {
   JoinOrganization: undefined;
   IndependentCoachSignup: undefined;
 };
+
+export type AuthenticatedStackParamList = {
+  Home: undefined;
+  DirectorAllTeams: undefined;
+  DirectorSettings: undefined;
+};

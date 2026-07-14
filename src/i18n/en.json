@@ -1,10 +1,19 @@
 {
   "common": {
     "brand": "CLUTCH",
+    "back": "Back",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "notSet": "Not set",
     "pendingOnboardingSaveError": "Your account was created, but we could not save the remaining setup. Please try again.",
     "pendingOnboardingCompletionError": "We could not finish setting up your account. Please sign in and try again.",
     "profileLoadError": "We could not load your account profile. Please try signing in again.",
-    "profileMissingError": "Your account profile is not ready yet. Please try signing in again."
+    "profileMissingError": "Your account profile is not ready yet. Please try signing in again.",
+    "signOut": "Sign Out"
+  },
+  "authFooter": {
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign In"
   },
   "landing": {
     "title": "Run your team from one place.",
@@ -93,5 +102,57 @@
     "submitting": "Creating team...",
     "confirmationPendingMessage": "Check your email to confirm your account, then sign in to finish setting up your team.",
     "onboardingError": "Unable to create your team. Please try again."
+  },
+  "home": {
+    "title": "Team hub",
+    "description": "Welcome, {{name}}. Choose what you want to manage today.",
+    "fallbackUser": "coach",
+    "noSessionError": "No active session.",
+    "profileError": "Unable to load your profile.",
+    "directorTitle": "Director workspace",
+    "directorDescription": "View every team in your organization or manage the join code coaches use to join.",
+    "allTeamsButton": "All Teams",
+    "settingsButton": "Director Settings",
+    "activeTeamTitle": "Active team",
+    "activeTeamDescription": "{{teamName}} is active for this session.",
+    "noActiveTeamDescription": "No active team is available yet.",
+    "superAdminTitle": "Super Admin",
+    "superAdminDescription": "Moderation tools are outside this Week 2 UI slice."
+  },
+  "teamSwitcher": {
+    "title": "Switch teams",
+    "description": "Choose the team you want to work with in this session.",
+    "loading": "Loading your teams...",
+    "error": "Unable to load your teams.",
+    "noDetails": "No level or season set"
+  },
+  "directorOnly": {
+    "title": "Director access only",
+    "description": "This screen is only available to directors."
+  },
+  "directorAllTeams": {
+    "title": "All Teams",
+    "description": "Every team in your organization appears here.",
+    "error": "Unable to load teams.",
+    "noSchoolError": "Your organization could not be found.",
+    "emptyTitle": "No teams yet",
+    "emptyDescription": "Teams will appear here once coaches join or teams are created.",
+    "teamMeta": "Level: {{level}} / Season: {{season}}"
+  },
+  "directorSettings": {
+    "title": "Director Settings",
+    "description": "Manage organization settings coaches need during onboarding.",
+    "noSchoolError": "Your organization could not be found.",
+    "loadError": "Unable to load your organization settings.",
+    "joinCodeTitle": "Organization join code",
+    "joinCodeDescription": "Share this code with coaches so they can join your organization.",
+    "regenerateButton": "Regenerate Code",
+    "regenerating": "Regenerating...",
+    "regenerateSuccess": "Join code updated.",
+    "regenerateError": "Unable to regenerate the join code. Please try again.",
+    "regenerateDuplicateError": "Unable to generate a unique code. Please try again.",
+    "confirmTitle": "Regenerate join code?",
+    "confirmDescription": "This invalidates the old code immediately. Anyone with the old code will no longer be able to join.",
+    "confirmButton": "Regenerate"
   }
 }
