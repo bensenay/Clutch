@@ -2,10 +2,8 @@ export type AuthStackParamList = {
   Landing: undefined;
   SignIn: undefined;
   AccountType: undefined;
-  CoachPath: undefined;
+  CoachSignup: undefined;
   DirectorSignup: undefined;
-  JoinOrganization: undefined;
-  IndependentCoachSignup: undefined;
 };
 
 export type AuthenticatedStackParamList = {

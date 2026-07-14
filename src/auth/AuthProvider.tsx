@@ -68,13 +68,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const functionName =
-        intent.type === 'director'
-          ? 'create-organization'
-          : intent.type === 'join'
-            ? 'join-organization'
-            : 'create-independent-coach';
-      const { error } = await supabase.functions.invoke(functionName, {
+      const { error } = await supabase.functions.invoke('create-organization', {
         body: intent.payload,
         headers: {
           Authorization: `Bearer ${nextSession.access_token}`,
@@ -83,14 +77,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       if (error) {
         const message = await getFunctionErrorMessage(error);
-
-        if (message === 'Invalid organization join code.') {
-          throw new Error(i18n.t('joinOrganization.invalidCodeError'));
-        }
-
-        if (message === 'This organization is currently suspended.') {
-          throw new Error(i18n.t('joinOrganization.suspendedError'));
-        }
 
         throw new Error(
           message ?? i18n.t('common.pendingOnboardingCompletionError'),

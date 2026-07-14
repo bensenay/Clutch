@@ -24,7 +24,7 @@ export function AccountTypeScreen({ navigation }: Props) {
         <ChoiceButton
           description={t('accountType.coachDescription')}
           title={t('accountType.coachTitle')}
-          onPress={() => navigation.navigate('CoachPath')}
+          onPress={() => navigation.navigate('CoachSignup')}
         />
       </View>
     </AuthScreen>

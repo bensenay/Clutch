@@ -3,18 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const PENDING_ONBOARDING_KEY = 'clutch.pendingOnboarding';
 
 export type PendingOnboardingIntent =
-  | {
-      type: 'director';
-      payload: { organizationName: string };
-    }
-  | {
-      type: 'join';
-      payload: { joinCode: string; teamName: string };
-    }
-  | {
-      type: 'independent';
-      payload: { teamName: string };
-    };
+  {
+    type: 'director';
+    payload: { organizationName: string };
+  };
 
 function isPendingOnboardingIntent(
   value: unknown,
@@ -34,22 +26,6 @@ function isPendingOnboardingIntent(
     return (
       'organizationName' in value.payload &&
       typeof value.payload.organizationName === 'string'
-    );
-  }
-
-  if (value.type === 'join') {
-    return (
-      'joinCode' in value.payload &&
-      typeof value.payload.joinCode === 'string' &&
-      'teamName' in value.payload &&
-      typeof value.payload.teamName === 'string'
-    );
-  }
-
-  if (value.type === 'independent') {
-    return (
-      'teamName' in value.payload &&
-      typeof value.payload.teamName === 'string'
     );
   }
 
