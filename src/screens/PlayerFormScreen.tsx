@@ -196,10 +196,13 @@ export function PlayerFormScreen({ navigation, route }: Props) {
       queryKey: ['players', activeTeam?.id],
     });
     await queryClient.invalidateQueries({
+      queryKey: ['team-dashboard-player-count', activeTeam?.id],
+    });
+    await queryClient.invalidateQueries({
       queryKey: ['player', playerId],
     });
     setIsSubmitting(false);
-    navigation.replace('Roster');
+    navigation.replace('MainTabs', { screen: 'RosterTab' });
   }
 
   async function removePlayer() {
@@ -224,8 +227,11 @@ export function PlayerFormScreen({ navigation, route }: Props) {
     await queryClient.invalidateQueries({
       queryKey: ['players', activeTeam?.id],
     });
+    await queryClient.invalidateQueries({
+      queryKey: ['team-dashboard-player-count', activeTeam?.id],
+    });
     setIsSubmitting(false);
-    navigation.replace('Roster');
+    navigation.replace('MainTabs', { screen: 'RosterTab' });
   }
 
   function confirmRemove() {

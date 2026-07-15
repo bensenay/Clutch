@@ -12,6 +12,9 @@ export type ActiveTeam = {
   level: string | null;
   season: string | null;
   primary_color: string | null;
+  secondary_color: string | null;
+  tertiary_color: string | null;
+  logo_url: string | null;
 };
 
 type ActiveTeamContextValue = {

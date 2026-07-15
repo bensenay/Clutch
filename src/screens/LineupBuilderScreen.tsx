@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { JerseyIcon } from '../components/JerseyIcon';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import { formatGameDate } from './GameListScreen';
@@ -75,9 +76,17 @@ type SavedLineupRow = LineupRow & {
 };
 
 const DEFAULT_TEAM_COLOR = '#b8442f';
+const DEFAULT_SECONDARY_COLOR = '#15251f';
+const DEFAULT_TERTIARY_COLOR = '#f4f6f3';
 const EMPTY_PLAYERS: Player[] = [];
 const VIEW_ORDER: LineupView[] = ['lines', 'power_play', 'penalty_kill'];
 const FOURTH_FORWARD_LINE_NUMBER = 4;
+
+type JerseyColors = {
+  primaryColor: string;
+  secondaryColor: string;
+  tertiaryColor: string;
+};
 
 export function LineupBuilderScreen({ route }: Props) {
   const { t } = useTranslation();
@@ -213,7 +222,11 @@ export function LineupBuilderScreen({ route }: Props) {
     (player) =>
       player.natural_position !== 'G' && !currentPlacedPlayerIds.has(player.id),
   );
-  const teamColor = activeTeam?.primary_color ?? DEFAULT_TEAM_COLOR;
+  const jerseyColors = {
+    primaryColor: activeTeam?.primary_color ?? DEFAULT_TEAM_COLOR,
+    secondaryColor: activeTeam?.secondary_color ?? DEFAULT_SECONDARY_COLOR,
+    tertiaryColor: activeTeam?.tertiary_color ?? DEFAULT_TERTIARY_COLOR,
+  };
 
   useEffect(() => {
     const lineup = lineupQuery.data;
@@ -517,9 +530,9 @@ export function LineupBuilderScreen({ route }: Props) {
               {poolPlayers.map((player) => (
                 <PlayerChip
                   isSelected={selectedPlayerId === player.id}
+                  jerseyColors={jerseyColors}
                   key={player.id}
                   player={player}
-                  teamColor={teamColor}
                   onPress={() => {
                     setSelectedPlayerId(player.id);
                     setRemoveSlotKey(null);
@@ -546,6 +559,7 @@ export function LineupBuilderScreen({ route }: Props) {
             removeSlotKey,
             setRemoveSlotKey,
             assignSelectedPlayer,
+            jerseyColors,
             updateLineSlot: (lineNumber, slot, playerId) =>
               setLines((currentLines) =>
                 updateLineSlot(currentLines, lineNumber, slot, playerId),
@@ -576,6 +590,7 @@ export function LineupBuilderScreen({ route }: Props) {
             removeSlotKey,
             setRemoveSlotKey,
             assignSelectedPlayer,
+            jerseyColors,
             updatePairSlot: (pairNumber, slot, playerId) =>
               setDefensePairs((currentPairs) =>
                 updatePairSlot(currentPairs, pairNumber, slot, playerId),
@@ -615,6 +630,7 @@ export function LineupBuilderScreen({ route }: Props) {
             )
           }
           assignSelectedPlayer={assignSelectedPlayer}
+          jerseyColors={jerseyColors}
         />
       ) : null}
       {activeView === 'penalty_kill' ? (
@@ -637,6 +653,7 @@ export function LineupBuilderScreen({ route }: Props) {
             )
           }
           assignSelectedPlayer={assignSelectedPlayer}
+          jerseyColors={jerseyColors}
         />
       ) : null}
       {error ? <Text style={appScreenStyles.error}>{error}</Text> : null}
@@ -655,13 +672,13 @@ export function LineupBuilderScreen({ route }: Props) {
 
 function PlayerChip({
   player,
-  teamColor,
   isSelected,
+  jerseyColors,
   onPress,
 }: {
   player: Player;
-  teamColor: string;
   isSelected: boolean;
+  jerseyColors: JerseyColors;
   onPress: () => void;
 }) {
   return (
@@ -670,13 +687,15 @@ function PlayerChip({
       onPress={onPress}
       style={[
         styles.playerChip,
-        { backgroundColor: teamColor },
         isSelected && styles.selectedPlayerChip,
       ]}
     >
-      <Text style={styles.playerChipNumber}>
-        {player.jersey_number ?? '--'}
-      </Text>
+      <JerseyIcon
+        label={player.jersey_number ?? '--'}
+        primaryColor={jerseyColors.primaryColor}
+        secondaryColor={jerseyColors.secondaryColor}
+        tertiaryColor={jerseyColors.tertiaryColor}
+      />
       <Text style={styles.playerChipName}>{player.last_name}</Text>
     </Pressable>
   );
@@ -755,6 +774,7 @@ function SlotView({
   playerById,
   removeSlotKey,
   setRemoveSlotKey,
+  jerseyColors,
   onPlace,
   onRemove,
 }: {
@@ -764,11 +784,15 @@ function SlotView({
   playerById: Map<string, Player>;
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
+  jerseyColors: JerseyColors;
   onPlace: () => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
   const player = playerId ? playerById.get(playerId) : null;
+  const jerseyLabel = player
+    ? player.jersey_number ?? '--'
+    : getSlotAbbreviation(slotKey, label);
 
   return (
     <Pressable
@@ -783,13 +807,18 @@ function SlotView({
       }}
       style={[styles.slot, player && styles.filledSlot]}
     >
-      <Text style={styles.slotLabel}>{label}</Text>
+      <JerseyIcon
+        isEmpty={!player}
+        label={jerseyLabel}
+        primaryColor={jerseyColors.primaryColor}
+        secondaryColor={jerseyColors.secondaryColor}
+        tertiaryColor={jerseyColors.tertiaryColor}
+        size={50}
+      />
       <Text style={styles.slotValue}>
         {player
-          ? `${player.jersey_number ?? '--'} ${player.first_name} ${
-              player.last_name
-            }`
-          : t('lineup.emptySlot')}
+          ? `${player.first_name} ${player.last_name}`
+          : label || t('lineup.emptySlot')}
       </Text>
       {player && removeSlotKey === slotKey ? (
         <Button title={t('lineup.removeSlotButton')} onPress={onRemove} />
@@ -855,6 +884,7 @@ function renderForwardLineSection({
   removeSlotKey,
   setRemoveSlotKey,
   assignSelectedPlayer,
+  jerseyColors,
   updateLineSlot,
   t,
   toggleFourthLine,
@@ -866,6 +896,7 @@ function renderForwardLineSection({
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   assignSelectedPlayer: (assign: (playerId: string) => void) => void;
+  jerseyColors: JerseyColors;
   updateLineSlot: (
     lineNumber: number,
     slot: keyof Pick<
@@ -892,6 +923,7 @@ function renderForwardLineSection({
               playerId={line.left_wing_player_id}
               removeSlotKey={removeSlotKey}
               setRemoveSlotKey={setRemoveSlotKey}
+              jerseyColors={jerseyColors}
               slotKey={`line-${line.line_number}-lw`}
               onPlace={() =>
                 assignSelectedPlayer((playerId) =>
@@ -912,6 +944,7 @@ function renderForwardLineSection({
               playerId={line.center_player_id}
               removeSlotKey={removeSlotKey}
               setRemoveSlotKey={setRemoveSlotKey}
+              jerseyColors={jerseyColors}
               slotKey={`line-${line.line_number}-c`}
               onPlace={() =>
                 assignSelectedPlayer((playerId) =>
@@ -928,6 +961,7 @@ function renderForwardLineSection({
               playerId={line.right_wing_player_id}
               removeSlotKey={removeSlotKey}
               setRemoveSlotKey={setRemoveSlotKey}
+              jerseyColors={jerseyColors}
               slotKey={`line-${line.line_number}-rw`}
               onPlace={() =>
                 assignSelectedPlayer((playerId) =>
@@ -965,6 +999,7 @@ function SpecialTeamsUnitsSection({
   removeSlotKey,
   setRemoveSlotKey,
   assignSelectedPlayer,
+  jerseyColors,
   updateLineSlot,
   updatePairSlot,
   isPenaltyKill = false,
@@ -976,6 +1011,7 @@ function SpecialTeamsUnitsSection({
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   assignSelectedPlayer: (assign: (playerId: string) => void) => void;
+  jerseyColors: JerseyColors;
   updateLineSlot: (
     lineNumber: number,
     slot: keyof Pick<
@@ -1017,6 +1053,7 @@ function SpecialTeamsUnitsSection({
                 playerId={line.left_wing_player_id}
                 removeSlotKey={removeSlotKey}
                 setRemoveSlotKey={setRemoveSlotKey}
+                jerseyColors={jerseyColors}
                 slotKey={`special-line-${line.line_number}-lw`}
                 onPlace={() =>
                   assignSelectedPlayer((playerId) =>
@@ -1038,6 +1075,7 @@ function SpecialTeamsUnitsSection({
                   playerId={line.center_player_id}
                   removeSlotKey={removeSlotKey}
                   setRemoveSlotKey={setRemoveSlotKey}
+                  jerseyColors={jerseyColors}
                   slotKey={`special-line-${line.line_number}-c`}
                   onPlace={() =>
                     assignSelectedPlayer((playerId) =>
@@ -1063,6 +1101,7 @@ function SpecialTeamsUnitsSection({
                 playerId={line.right_wing_player_id}
                 removeSlotKey={removeSlotKey}
                 setRemoveSlotKey={setRemoveSlotKey}
+                jerseyColors={jerseyColors}
                 slotKey={`special-line-${line.line_number}-rw`}
                 onPlace={() =>
                   assignSelectedPlayer((playerId) =>
@@ -1085,6 +1124,7 @@ function SpecialTeamsUnitsSection({
                 playerId={pair?.left_d_player_id ?? null}
                 removeSlotKey={removeSlotKey}
                 setRemoveSlotKey={setRemoveSlotKey}
+                jerseyColors={jerseyColors}
                 slotKey={`special-pair-${line.line_number}-ld`}
                 onPlace={() =>
                   assignSelectedPlayer((playerId) =>
@@ -1105,6 +1145,7 @@ function SpecialTeamsUnitsSection({
                 playerId={pair?.right_d_player_id ?? null}
                 removeSlotKey={removeSlotKey}
                 setRemoveSlotKey={setRemoveSlotKey}
+                jerseyColors={jerseyColors}
                 slotKey={`special-pair-${line.line_number}-rd`}
                 onPlace={() =>
                   assignSelectedPlayer((playerId) =>
@@ -1134,6 +1175,7 @@ function renderDefensePairSection({
   removeSlotKey,
   setRemoveSlotKey,
   assignSelectedPlayer,
+  jerseyColors,
   updatePairSlot,
   t,
 }: {
@@ -1143,6 +1185,7 @@ function renderDefensePairSection({
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   assignSelectedPlayer: (assign: (playerId: string) => void) => void;
+  jerseyColors: JerseyColors;
   updatePairSlot: (
     pairNumber: number,
     slot: keyof Pick<DefensePair, 'left_d_player_id' | 'right_d_player_id'>,
@@ -1165,6 +1208,7 @@ function renderDefensePairSection({
               playerId={pair.left_d_player_id}
               removeSlotKey={removeSlotKey}
               setRemoveSlotKey={setRemoveSlotKey}
+              jerseyColors={jerseyColors}
               slotKey={`pair-${pair.pair_number}-ld`}
               onPlace={() =>
                 assignSelectedPlayer((playerId) =>
@@ -1181,6 +1225,7 @@ function renderDefensePairSection({
               playerId={pair.right_d_player_id}
               removeSlotKey={removeSlotKey}
               setRemoveSlotKey={setRemoveSlotKey}
+              jerseyColors={jerseyColors}
               slotKey={`pair-${pair.pair_number}-rd`}
               onPlace={() =>
                 assignSelectedPlayer((playerId) =>
@@ -1451,6 +1496,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function getSlotAbbreviation(slotKey: string, label: string) {
+  if (/\b1\b/.test(label)) {
+    return 'F1';
+  }
+
+  if (/\b2\b/.test(label)) {
+    return 'F2';
+  }
+
+  if (slotKey.endsWith('-lw')) {
+    return 'LW';
+  }
+
+  if (slotKey.endsWith('-c')) {
+    return 'C';
+  }
+
+  if (slotKey.endsWith('-rw')) {
+    return 'RW';
+  }
+
+  if (slotKey.endsWith('-ld')) {
+    return 'LD';
+  }
+
+  if (slotKey.endsWith('-rd')) {
+    return 'RD';
+  }
+
+  return label;
+}
+
 const styles = StyleSheet.create({
   compactCard: {
     gap: 6,
@@ -1475,21 +1552,19 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   playerChip: {
+    alignItems: 'center',
     borderRadius: 12,
-    gap: 2,
-    minWidth: 78,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 4,
+    minWidth: 68,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
   },
   playerChipName: {
-    color: '#ffffff',
+    color: '#15251f',
     fontSize: 12,
     fontWeight: '700',
-  },
-  playerChipNumber: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '800',
+    maxWidth: 74,
+    textAlign: 'center',
   },
   pool: {
     flexDirection: 'row',
@@ -1523,6 +1598,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   slot: {
+    alignItems: 'center',
     borderColor: '#ccd3ce',
     borderRadius: 8,
     borderWidth: 1,
@@ -1537,16 +1613,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  slotLabel: {
-    color: '#59636e',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
   slotValue: {
     color: '#15251f',
     fontSize: 12,
     fontWeight: '700',
+    textAlign: 'center',
   },
   specialTeamUnit: {
     gap: 8,

@@ -21,7 +21,12 @@ type GamePayload = {
   game_date: string;
   location: string | null;
   is_home: boolean;
+  result: GameResult;
 };
+
+type GameResult = Game['result'];
+
+const RESULT_OPTIONS: GameResult[] = [null, 'win', 'loss', 'tie'];
 
 export function GameFormScreen({ navigation, route }: Props) {
   const { i18n, t } = useTranslation();
@@ -36,6 +41,7 @@ export function GameFormScreen({ navigation, route }: Props) {
   );
   const [location, setLocation] = useState('');
   const [isHome, setIsHome] = useState(true);
+  const [result, setResult] = useState<GameResult>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,7 +55,7 @@ export function GameFormScreen({ navigation, route }: Props) {
       const { data, error: loadError } = await supabase
         .from('games')
         .select(
-          'id, team_id, opponent_name, game_date, location, is_home, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
+          'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
         )
         .eq('id', gameId)
         .single();
@@ -76,6 +82,7 @@ export function GameFormScreen({ navigation, route }: Props) {
     setCalendarMonth(startOfMonth(parsedGameDate));
     setLocation(game.location ?? '');
     setIsHome(game.is_home);
+    setResult(game.result);
   }, [gameQuery.data]);
 
   function nullableText(value: string) {
@@ -100,6 +107,7 @@ export function GameFormScreen({ navigation, route }: Props) {
       game_date: gameDate.toISOString(),
       location: nullableText(location),
       is_home: isHome,
+      result,
     };
 
     return payload;
@@ -129,6 +137,9 @@ export function GameFormScreen({ navigation, route }: Props) {
       queryKey: ['games', activeTeam?.id],
     });
     await queryClient.invalidateQueries({
+      queryKey: ['team-dashboard-games', activeTeam?.id],
+    });
+    await queryClient.invalidateQueries({
       queryKey: ['game', gameId],
     });
     setIsSubmitting(false);
@@ -138,7 +149,7 @@ export function GameFormScreen({ navigation, route }: Props) {
       return;
     }
 
-    navigation.replace('Games');
+    navigation.replace('MainTabs', { screen: 'GameDayTab' });
   }
 
   if (!activeTeam) {
@@ -216,6 +227,33 @@ export function GameFormScreen({ navigation, route }: Props) {
                 {t('gameForm.awayOption')}
               </Text>
             </Pressable>
+          </View>
+        </View>
+        <View style={styles.selectorGroup}>
+          <Text style={styles.selectorLabel}>
+            {t('gameForm.resultLabel')}
+          </Text>
+          <View style={styles.selectorOptions}>
+            {RESULT_OPTIONS.map((option) => (
+              <Pressable
+                accessibilityRole="button"
+                key={option ?? 'not-played'}
+                onPress={() => setResult(option)}
+                style={[
+                  styles.selectorOption,
+                  result === option && styles.selected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.selectorOptionText,
+                    result === option && styles.selectedText,
+                  ]}
+                >
+                  {t(`gameForm.results.${option ?? 'notPlayed'}`)}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
         {error ? <Text style={authStyles.error}>{error}</Text> : null}

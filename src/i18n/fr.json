@@ -121,6 +121,64 @@
     "error": "Impossible de charger vos équipes.",
     "noDetails": "Aucun niveau ni saison défini"
   },
+  "tabs": {
+    "team": "Équipe",
+    "roster": "Effectif",
+    "gameDay": "Jour de match",
+    "practices": "Entraînements"
+  },
+  "teamTab": {
+    "title": "Équipe",
+    "description": "Choisissez le contexte d'équipe pour cette session.",
+    "loadError": "Impossible de charger vos équipes.",
+    "teamListTitle": "Vos équipes",
+    "teamListDescription": "Touchez une équipe pour l'activer dans l'effectif, les matchs et les entraînements.",
+    "dashboardLoadError": "Impossible de charger le tableau de bord de l'équipe.",
+    "rosterSizeLabel": "Joueurs",
+    "recordLabel": "Fiche",
+    "recordValue": "{{wins}}-{{losses}}-{{ties}}",
+    "nextGameTitle": "Prochain match",
+    "openNextGameButton": "Ouvrir le match",
+    "noGamesDescription": "Aucun match n'a encore été créé.",
+    "noUpcomingGameDescription": "Aucun match à venir.",
+    "emptyTitle": "Aucune équipe pour le moment",
+    "emptyDescription": "Les équipes apparaîtront ici lorsqu'elles seront créées ou assignées."
+  },
+  "practices": {
+    "title": "Entraînements",
+    "description": "Plans d'entraînement et exercices pour {{teamName}}.",
+    "noActiveTeamDescription": "Choisissez une équipe avant d'ouvrir les plans d'entraînement.",
+    "emptyTitle": "Plans d'entraînement et exercices à venir",
+    "emptyDescription": "Cet onglet est prêt pour le planificateur d'entraînements et la bibliothèque d'exercices."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "description": "Gérez les préférences de l'app, de l'organisation et de l'équipe.",
+    "openLabel": "Ouvrir les paramètres",
+    "teamBrandingTitle": "Image de l'équipe",
+    "teamBrandingDescription": "Mettez à jour le logo et les couleurs de {{teamName}}.",
+    "teamBrandingNoTeamTitle": "Aucune équipe active sélectionnée",
+    "teamBrandingNoTeamDescription": "Choisissez une équipe dans l'onglet Équipe avant de modifier son image.",
+    "teamBrandingLoadError": "Impossible de charger l'image de l'équipe.",
+    "teamBrandingLogoLabel": "Logo de l'équipe",
+    "teamBrandingUploadButton": "Téléverser le logo",
+    "teamBrandingUploading": "Téléversement...",
+    "teamBrandingLogoPermissionError": "L'accès aux photos est nécessaire pour téléverser un logo d'équipe.",
+    "teamBrandingLogoError": "Impossible de téléverser le logo. Veuillez réessayer.",
+    "teamBrandingLogoSuccess": "Logo mis à jour.",
+    "teamBrandingPreviewLabel": "Aperçu en direct",
+    "teamBrandingPrimaryColor": "Couleur principale",
+    "teamBrandingSecondaryColor": "Couleur secondaire",
+    "teamBrandingTertiaryColor": "Couleur tertiaire",
+    "teamBrandingColorOptionLabel": "Option de couleur {{color}}",
+    "teamBrandingSaveButton": "Enregistrer l'image",
+    "teamBrandingSaving": "Enregistrement...",
+    "teamBrandingSaveSuccess": "Image de l'équipe enregistrée.",
+    "teamBrandingSaveError": "Impossible d'enregistrer l'image de l'équipe.",
+    "languageTitle": "Langue",
+    "languageDescription": "Changez la langue de l'app pour cet appareil.",
+    "languageToggle": "Passer à {{language}}"
+  },
   "directorOnly": {
     "title": "Accès réservé aux directeurs",
     "description": "Cet écran est uniquement disponible pour les directeurs."
@@ -233,6 +291,30 @@
     "homeBadge": "Domicile",
     "awayBadge": "Extérieur"
   },
+  "calendar": {
+    "views": {
+      "list": "Liste",
+      "week": "Semaine",
+      "month": "Mois"
+    },
+    "filters": {
+      "all": "Tout",
+      "games": "Matchs seulement",
+      "practices": "Entraînements seulement"
+    },
+    "gameEventLabel": "c. {{opponentName}}, {{time}}",
+    "practiceEventLabel": "Entraînement, {{time}}",
+    "selectedDayTitle": "{{date}}",
+    "weekTitle": "Semaine du {{range}}",
+    "emptyDay": "Aucun événement",
+    "noEvents": "Aucun événement.",
+    "noEventsForDay": "Aucun événement pour cette journée.",
+    "moreEvents": "+{{count}} de plus",
+    "exportButton": "Exporter PDF",
+    "exporting": "Exportation...",
+    "exportUnavailable": "Le partage n'est pas disponible sur cet appareil.",
+    "exportError": "Impossible d'exporter le calendrier. Veuillez réessayer."
+  },
   "gameForm": {
     "addHeaderTitle": "Ajouter un match",
     "editHeaderTitle": "Modifier le match",
@@ -254,6 +336,13 @@
     "homeAwayLabel": "Domicile ou extérieur",
     "homeOption": "Domicile",
     "awayOption": "Extérieur",
+    "resultLabel": "Résultat",
+    "results": {
+      "notPlayed": "Pas encore joué",
+      "win": "Victoire",
+      "loss": "Défaite",
+      "tie": "Match nul"
+    },
     "requiredError": "Le nom de l'adversaire et la date sont obligatoires.",
     "missingGameError": "Match introuvable.",
     "loadError": "Impossible de charger les détails du match.",
@@ -261,6 +350,15 @@
     "lineupButton": "Préparer l'alignement",
     "saveButton": "Enregistrer le match",
     "saving": "Enregistrement..."
+  },
+  "practiceDetail": {
+    "title": "Entraînement",
+    "description": "Détails du plan d'entraînement.",
+    "loadError": "Impossible de charger les détails de l'entraînement.",
+    "segmentsTitle": "Segments",
+    "noSegments": "Aucun segment n'a encore été ajouté.",
+    "segmentFallback": "Segment {{number}}",
+    "segmentWithDuration": "{{title}} - {{duration}} min"
   },
   "lineup": {
     "title": "Alignement",

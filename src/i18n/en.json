@@ -121,6 +121,64 @@
     "error": "Unable to load your teams.",
     "noDetails": "No level or season set"
   },
+  "tabs": {
+    "team": "Team",
+    "roster": "Roster",
+    "gameDay": "Game Day",
+    "practices": "Practices"
+  },
+  "teamTab": {
+    "title": "Team",
+    "description": "Choose the team context for this session.",
+    "loadError": "Unable to load your teams.",
+    "teamListTitle": "Your teams",
+    "teamListDescription": "Tap a team to make it active across roster, game day, and practices.",
+    "dashboardLoadError": "Unable to load the team dashboard.",
+    "rosterSizeLabel": "Players",
+    "recordLabel": "Record",
+    "recordValue": "{{wins}}-{{losses}}-{{ties}}",
+    "nextGameTitle": "Next game",
+    "openNextGameButton": "Open Game",
+    "noGamesDescription": "No games have been created yet.",
+    "noUpcomingGameDescription": "No upcoming games.",
+    "emptyTitle": "No teams yet",
+    "emptyDescription": "Teams will appear here once they are created or assigned."
+  },
+  "practices": {
+    "title": "Practices",
+    "description": "Practice plans and drills for {{teamName}}.",
+    "noActiveTeamDescription": "Choose a team before opening practice plans.",
+    "emptyTitle": "Practice plans and drills coming soon",
+    "emptyDescription": "This tab is ready for the practice planner and drill library work."
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage app, organization, and team preferences.",
+    "openLabel": "Open settings",
+    "teamBrandingTitle": "Team Branding",
+    "teamBrandingDescription": "Update the logo and colors for {{teamName}}.",
+    "teamBrandingNoTeamTitle": "No active team selected",
+    "teamBrandingNoTeamDescription": "Choose a team from the Team tab before editing branding.",
+    "teamBrandingLoadError": "Unable to load team branding.",
+    "teamBrandingLogoLabel": "Team logo",
+    "teamBrandingUploadButton": "Upload Logo",
+    "teamBrandingUploading": "Uploading...",
+    "teamBrandingLogoPermissionError": "Photo access is needed to upload a team logo.",
+    "teamBrandingLogoError": "Unable to upload the logo. Please try again.",
+    "teamBrandingLogoSuccess": "Logo updated.",
+    "teamBrandingPreviewLabel": "Live preview",
+    "teamBrandingPrimaryColor": "Primary color",
+    "teamBrandingSecondaryColor": "Secondary color",
+    "teamBrandingTertiaryColor": "Tertiary color",
+    "teamBrandingColorOptionLabel": "{{color}} color option",
+    "teamBrandingSaveButton": "Save Branding",
+    "teamBrandingSaving": "Saving...",
+    "teamBrandingSaveSuccess": "Team branding saved.",
+    "teamBrandingSaveError": "Unable to save team branding.",
+    "languageTitle": "Language",
+    "languageDescription": "Switch the app language for this device.",
+    "languageToggle": "Switch to {{language}}"
+  },
   "directorOnly": {
     "title": "Director access only",
     "description": "This screen is only available to directors."
@@ -233,6 +291,30 @@
     "homeBadge": "Home",
     "awayBadge": "Away"
   },
+  "calendar": {
+    "views": {
+      "list": "List",
+      "week": "Week",
+      "month": "Month"
+    },
+    "filters": {
+      "all": "All",
+      "games": "Games only",
+      "practices": "Practices only"
+    },
+    "gameEventLabel": "vs {{opponentName}}, {{time}}",
+    "practiceEventLabel": "Practice, {{time}}",
+    "selectedDayTitle": "{{date}}",
+    "weekTitle": "Week of {{range}}",
+    "emptyDay": "No event",
+    "noEvents": "No events.",
+    "noEventsForDay": "No events for this day.",
+    "moreEvents": "+{{count}} more",
+    "exportButton": "Export PDF",
+    "exporting": "Exporting...",
+    "exportUnavailable": "Sharing is not available on this device.",
+    "exportError": "Unable to export the calendar. Please try again."
+  },
   "gameForm": {
     "addHeaderTitle": "Add Game",
     "editHeaderTitle": "Edit Game",
@@ -254,6 +336,13 @@
     "homeAwayLabel": "Home or away",
     "homeOption": "Home",
     "awayOption": "Away",
+    "resultLabel": "Result",
+    "results": {
+      "notPlayed": "Not yet played",
+      "win": "Win",
+      "loss": "Loss",
+      "tie": "Tie"
+    },
     "requiredError": "Opponent name and date are required.",
     "missingGameError": "Game not found.",
     "loadError": "Unable to load game details.",
@@ -261,6 +350,15 @@
     "lineupButton": "Build Lineup",
     "saveButton": "Save Game",
     "saving": "Saving..."
+  },
+  "practiceDetail": {
+    "title": "Practice",
+    "description": "Practice plan details.",
+    "loadError": "Unable to load practice details.",
+    "segmentsTitle": "Segments",
+    "noSegments": "No segments have been added yet.",
+    "segmentFallback": "Segment {{number}}",
+    "segmentWithDuration": "{{title}} - {{duration}} min"
   },
   "lineup": {
     "title": "Lineup",

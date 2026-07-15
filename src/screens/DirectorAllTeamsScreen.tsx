@@ -24,6 +24,9 @@ type Team = {
   level: string | null;
   season: string | null;
   primary_color: string | null;
+  secondary_color: string | null;
+  tertiary_color: string | null;
+  logo_url: string | null;
 };
 
 export function DirectorAllTeamsScreen({ navigation }: Props) {
@@ -63,7 +66,9 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
 
       const { data, error } = await supabase
         .from('teams')
-        .select('id, name, level, season, primary_color')
+        .select(
+          'id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url',
+        )
         .eq('school_id', profile.school_id)
         .order('name', { ascending: true });
 
@@ -130,14 +135,14 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
               title={t('directorAllTeams.viewRosterButton')}
               onPress={() => {
                 setActiveTeam(team);
-                navigation.navigate('Roster');
+                navigation.navigate('MainTabs', { screen: 'RosterTab' });
               }}
             />
             <Button
               title={t('directorAllTeams.viewGamesButton')}
               onPress={() => {
                 setActiveTeam(team);
-                navigation.navigate('Games');
+                navigation.navigate('MainTabs', { screen: 'GameDayTab' });
               }}
             />
           </View>

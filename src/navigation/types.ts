@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type AuthStackParamList = {
   Landing: undefined;
   SignIn: undefined;
@@ -7,12 +9,19 @@ export type AuthStackParamList = {
 };
 
 export type AuthenticatedStackParamList = {
-  Home: undefined;
-  DirectorAllTeams: undefined;
-  DirectorSettings: undefined;
-  Roster: undefined;
+  MainTabs: NavigatorScreenParams<AuthenticatedTabParamList> | undefined;
+  Settings: undefined;
   PlayerForm: { playerId?: string } | undefined;
-  Games: undefined;
   GameForm: { gameId?: string } | undefined;
   LineupBuilder: { gameId: string };
+  PracticePlanDetail: { practicePlanId: string };
+  DirectorAllTeams: undefined;
+  DirectorSettings: undefined;
+};
+
+export type AuthenticatedTabParamList = {
+  TeamTab: undefined;
+  RosterTab: undefined;
+  GameDayTab: undefined;
+  PracticesTab: undefined;
 };

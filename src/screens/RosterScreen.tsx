@@ -1,13 +1,21 @@
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
-import type { AuthenticatedStackParamList } from '../navigation/types';
+import type {
+  AuthenticatedStackParamList,
+  AuthenticatedTabParamList,
+} from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 
-type Props = NativeStackScreenProps<AuthenticatedStackParamList, 'Roster'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<AuthenticatedTabParamList, 'RosterTab'>,
+  NativeStackScreenProps<AuthenticatedStackParamList>
+>;
 
 export type PlayerStatus = 'active' | 'injured' | 'suspended';
 export type NaturalPosition = 'F' | 'D' | 'G';

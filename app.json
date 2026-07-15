@@ -23,7 +23,13 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Clutch to access your photos so you can upload a team logo."
+        }
+      ]
     ]
   }
 }

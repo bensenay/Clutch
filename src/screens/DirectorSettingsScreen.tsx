@@ -35,6 +35,23 @@ function isDuplicateJoinCodeError(error: { code?: string; message?: string }) {
 
 export function DirectorSettingsScreen() {
   const { t } = useTranslation();
+
+  return (
+    <AppScreen
+      description={t('directorSettings.description')}
+      title={t('directorSettings.title')}
+    >
+      <DirectorOrganizationSettingsSection showAccessDenied />
+    </AppScreen>
+  );
+}
+
+export function DirectorOrganizationSettingsSection({
+  showAccessDenied = false,
+}: {
+  showAccessDenied?: boolean;
+}) {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -144,27 +161,28 @@ export function DirectorSettingsScreen() {
   }
 
   if (profileQuery.isLoading) {
-    return (
-      <AppScreen title={t('directorSettings.title')}>
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
-      </AppScreen>
-    );
+    return <Text style={appScreenStyles.note}>{t('common.loading')}</Text>;
   }
 
   if (profile?.role !== 'director') {
+    if (!showAccessDenied) {
+      return null;
+    }
+
     return (
-      <AppScreen
-        description={t('directorOnly.description')}
-        title={t('directorOnly.title')}
-      />
+      <View style={appScreenStyles.card}>
+        <Text style={appScreenStyles.cardTitle}>
+          {t('directorOnly.title')}
+        </Text>
+        <Text style={appScreenStyles.cardDescription}>
+          {t('directorOnly.description')}
+        </Text>
+      </View>
     );
   }
 
   return (
-    <AppScreen
-      description={t('directorSettings.description')}
-      title={t('directorSettings.title')}
-    >
+    <>
       {schoolQuery.isLoading ? (
         <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
       ) : null}
@@ -201,6 +219,6 @@ export function DirectorSettingsScreen() {
           />
         </View>
       ) : null}
-    </AppScreen>
+    </>
   );
 }
