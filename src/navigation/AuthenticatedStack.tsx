@@ -1,8 +1,13 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { DirectorAllTeamsScreen } from '../screens/DirectorAllTeamsScreen';
+import { GameFormScreen } from '../screens/GameFormScreen';
+import { GameListScreen } from '../screens/GameListScreen';
+import { LineupBuilderScreen } from '../screens/LineupBuilderScreen';
 import { DirectorSettingsScreen } from '../screens/DirectorSettingsScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { PlayerFormScreen } from '../screens/PlayerFormScreen';
+import { RosterScreen } from '../screens/RosterScreen';
 import type { AuthenticatedStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AuthenticatedStackParamList>();
@@ -35,6 +40,39 @@ export function AuthenticatedStack() {
         component={DirectorSettingsScreen}
         name="DirectorSettings"
         options={{ title: t('directorSettings.title') }}
+      />
+      <Stack.Screen
+        component={RosterScreen}
+        name="Roster"
+        options={{ title: t('roster.title') }}
+      />
+      <Stack.Screen
+        component={PlayerFormScreen}
+        name="PlayerForm"
+        options={({ route }) => ({
+          title: route.params?.playerId
+            ? t('playerForm.editHeaderTitle')
+            : t('playerForm.addHeaderTitle'),
+        })}
+      />
+      <Stack.Screen
+        component={GameListScreen}
+        name="Games"
+        options={{ title: t('games.title') }}
+      />
+      <Stack.Screen
+        component={GameFormScreen}
+        name="GameForm"
+        options={({ route }) => ({
+          title: route.params?.gameId
+            ? t('gameForm.editHeaderTitle')
+            : t('gameForm.addHeaderTitle'),
+        })}
+      />
+      <Stack.Screen
+        component={LineupBuilderScreen}
+        name="LineupBuilder"
+        options={{ title: t('lineup.title') }}
       />
     </Stack.Navigator>
   );

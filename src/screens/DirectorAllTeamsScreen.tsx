@@ -1,9 +1,17 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { Text, View } from 'react-native';
+import { Button, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import type { AuthenticatedStackParamList } from '../navigation/types';
+import { useActiveTeam } from '../teams/ActiveTeamContext';
+
+type Props = NativeStackScreenProps<
+  AuthenticatedStackParamList,
+  'DirectorAllTeams'
+>;
 
 type Profile = {
   role: 'super_admin' | 'director' | 'coach';
@@ -15,11 +23,13 @@ type Team = {
   name: string;
   level: string | null;
   season: string | null;
+  primary_color: string | null;
 };
 
-export function DirectorAllTeamsScreen() {
+export function DirectorAllTeamsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { session } = useAuth();
+  const { setActiveTeam } = useActiveTeam();
 
   const profileQuery = useQuery({
     queryKey: ['profile', session?.user.id],
@@ -53,7 +63,7 @@ export function DirectorAllTeamsScreen() {
 
       const { data, error } = await supabase
         .from('teams')
-        .select('id, name, level, season')
+        .select('id, name, level, season, primary_color')
         .eq('school_id', profile.school_id)
         .order('name', { ascending: true });
 
@@ -116,6 +126,20 @@ export function DirectorAllTeamsScreen() {
                 season: team.season || t('common.notSet'),
               })}
             </Text>
+            <Button
+              title={t('directorAllTeams.viewRosterButton')}
+              onPress={() => {
+                setActiveTeam(team);
+                navigation.navigate('Roster');
+              }}
+            />
+            <Button
+              title={t('directorAllTeams.viewGamesButton')}
+              onPress={() => {
+                setActiveTeam(team);
+                navigation.navigate('Games');
+              }}
+            />
           </View>
         ))}
       </View>

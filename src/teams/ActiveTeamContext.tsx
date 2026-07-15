@@ -11,6 +11,7 @@ export type ActiveTeam = {
   name: string;
   level: string | null;
   season: string | null;
+  primary_color: string | null;
 };
 
 type ActiveTeamContextValue = {

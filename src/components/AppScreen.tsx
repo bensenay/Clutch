@@ -65,6 +65,12 @@ export const appScreenStyles = StyleSheet.create({
   list: {
     gap: 12,
   },
+  row: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
   meta: {
     color: '#59636e',
     fontSize: 13,

@@ -31,12 +31,14 @@ type MembershipRow = {
         name: string;
         level: string | null;
         season: string | null;
+        primary_color: string | null;
       }
     | {
         id: string;
         name: string;
         level: string | null;
         season: string | null;
+        primary_color: string | null;
       }[]
     | null;
 };
@@ -74,7 +76,7 @@ export function HomeScreen({ navigation }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_memberships')
-        .select('team_id, teams ( id, name, level, season )')
+        .select('team_id, teams ( id, name, level, season, primary_color )')
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -94,6 +96,7 @@ export function HomeScreen({ navigation }: Props) {
             name: team.name,
             level: team.level,
             season: team.season,
+            primary_color: team.primary_color,
           };
         })
         .filter((team): team is ActiveTeam => Boolean(team));
@@ -104,8 +107,13 @@ export function HomeScreen({ navigation }: Props) {
   const coachTeams = teamsQuery.data ?? [];
 
   useEffect(() => {
-    if (profile?.role !== 'coach') {
+    if (profile?.role && profile.role !== 'coach') {
       setActiveTeam(null);
+    }
+  }, [profile?.role, setActiveTeam]);
+
+  useEffect(() => {
+    if (profile?.role !== 'coach') {
       return;
     }
 
@@ -185,6 +193,18 @@ export function HomeScreen({ navigation }: Props) {
                   })
                 : t('home.noActiveTeamDescription')}
             </Text>
+            {activeTeam ? (
+              <>
+                <Button
+                  title={t('home.rosterButton')}
+                  onPress={() => navigation.navigate('Roster')}
+                />
+                <Button
+                  title={t('home.gamesButton')}
+                  onPress={() => navigation.navigate('Games')}
+                />
+              </>
+            ) : null}
           </View>
         </View>
       ) : null}
