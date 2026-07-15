@@ -5,6 +5,7 @@ import { CoachSignupScreen } from '../screens/CoachSignupScreen';
 import { DirectorSignupScreen } from '../screens/DirectorSignupScreen';
 import { LandingScreen } from '../screens/LandingScreen';
 import { SignInScreen } from '../screens/SignInScreen';
+import { fonts, iceWhite, rinkNavy } from '../theme/theme';
 import type { AuthStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -16,11 +17,12 @@ export function AuthStack() {
     <Stack.Navigator
       initialRouteName="Landing"
       screenOptions={{
-        contentStyle: { backgroundColor: '#f4f6f3' },
+        contentStyle: { backgroundColor: rinkNavy },
         headerBackTitle: t('common.back'),
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: '#f4f6f3' },
-        headerTintColor: '#15251f',
+        headerStyle: { backgroundColor: rinkNavy },
+        headerTintColor: iceWhite,
+        headerTitleStyle: { fontFamily: fonts.display },
       }}
     >
       <Stack.Screen

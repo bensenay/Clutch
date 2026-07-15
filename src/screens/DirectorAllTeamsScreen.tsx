@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import { goalRed } from '../theme/theme';
 
 type Props = NativeStackScreenProps<
   AuthenticatedStackParamList,
@@ -132,6 +133,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
               })}
             </Text>
             <Button
+              color={goalRed}
               title={t('directorAllTeams.viewRosterButton')}
               onPress={() => {
                 setActiveTeam(team);
@@ -139,6 +141,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
               }}
             />
             <Button
+              color={goalRed}
               title={t('directorAllTeams.viewGamesButton')}
               onPress={() => {
                 setActiveTeam(team);

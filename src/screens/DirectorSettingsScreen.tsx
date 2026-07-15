@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { goalRed } from '../theme/theme';
 
 type Profile = {
   role: 'super_admin' | 'director' | 'coach';
@@ -209,6 +210,7 @@ export function DirectorOrganizationSettingsSection({
             <Text style={appScreenStyles.error}>{errorMessage}</Text>
           ) : null}
           <Button
+            color={goalRed}
             disabled={isRegenerating}
             title={
               isRegenerating

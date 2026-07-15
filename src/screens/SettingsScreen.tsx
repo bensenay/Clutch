@@ -17,6 +17,13 @@ import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { setLanguage } from '../i18n';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import {
+  colors,
+  fonts,
+  goalRed,
+  iceWhite,
+  rinkNavy,
+} from '../theme/theme';
 import { DirectorOrganizationSettingsSection } from './DirectorSettingsScreen';
 
 type Props = NativeStackScreenProps<AuthenticatedStackParamList, 'Settings'>;
@@ -31,9 +38,9 @@ type TeamBranding = {
 };
 
 const BRANDING_PALETTE = [
-  '#b8442f',
-  '#15251f',
-  '#f4f6f3',
+  goalRed,
+  rinkNavy,
+  iceWhite,
   '#1f5f8b',
   '#d6a21f',
   '#2f7d4f',
@@ -45,9 +52,9 @@ const BRANDING_PALETTE = [
   '#0f766e',
 ];
 
-const DEFAULT_PRIMARY_COLOR = '#b8442f';
-const DEFAULT_SECONDARY_COLOR = '#15251f';
-const DEFAULT_TERTIARY_COLOR = '#f4f6f3';
+const DEFAULT_PRIMARY_COLOR = goalRed;
+const DEFAULT_SECONDARY_COLOR = rinkNavy;
+const DEFAULT_TERTIARY_COLOR = iceWhite;
 const TEAM_LOGOS_BUCKET = 'team-logos';
 
 export function SettingsScreen(_props: Props) {
@@ -80,13 +87,18 @@ export function SettingsScreen(_props: Props) {
           {t('settings.languageDescription')}
         </Text>
         <Button
+          color={goalRed}
           title={t('settings.languageToggle', {
             language: nextLanguage.toUpperCase(),
           })}
           onPress={() => void setLanguage(nextLanguage)}
         />
       </View>
-      <Button title={t('common.signOut')} onPress={() => void handleSignOut()} />
+      <Button
+        color={goalRed}
+        title={t('common.signOut')}
+        onPress={() => void handleSignOut()}
+      />
     </AppScreen>
   );
 }
@@ -314,6 +326,7 @@ function TeamBrandingSection() {
             {t('settings.teamBrandingLogoLabel')}
           </Text>
           <Button
+            color={goalRed}
             disabled={isUploading || brandingQuery.isLoading}
             title={
               isUploading
@@ -369,6 +382,7 @@ function TeamBrandingSection() {
         <Text style={styles.success}>{successMessage}</Text>
       ) : null}
       <Button
+        color={goalRed}
         disabled={isSaving || isUploading || brandingQuery.isLoading}
         title={
           isSaving
@@ -462,7 +476,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   lightSwatch: {
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderWidth: 1,
   },
   logoActions: {
@@ -471,8 +485,8 @@ const styles = StyleSheet.create({
   },
   logoFrame: {
     alignItems: 'center',
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
     borderRadius: 42,
     borderWidth: 2,
     height: 84,
@@ -485,7 +499,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   logoPlaceholder: {
-    color: '#b8442f',
+    color: goalRed,
+    fontFamily: fonts.display,
     fontSize: 24,
     fontWeight: '900',
   },
@@ -500,7 +515,7 @@ const styles = StyleSheet.create({
     height: 24,
   },
   previewCard: {
-    backgroundColor: '#f4f6f3',
+    backgroundColor: colors.cardPressed,
     borderRadius: 12,
     gap: 10,
     padding: 12,
@@ -521,16 +536,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sectionLabel: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
   },
   selectedSwatch: {
-    borderColor: '#b8442f',
+    borderColor: goalRed,
     borderWidth: 2,
   },
   success: {
-    color: '#2f7d4f',
+    color: colors.success,
     lineHeight: 20,
   },
   swatch: {

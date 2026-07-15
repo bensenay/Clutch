@@ -5,6 +5,7 @@ import Svg, {
   Rect,
   Text as SvgText,
 } from 'react-native-svg';
+import { fonts, goalRed, iceWhite, rinkNavy, slateGrey } from '../theme/theme';
 
 type JerseyIconProps = {
   primaryColor?: string | null;
@@ -15,12 +16,12 @@ type JerseyIconProps = {
   isEmpty?: boolean;
 };
 
-const DEFAULT_PRIMARY_COLOR = '#b8442f';
-const DEFAULT_SECONDARY_COLOR = '#15251f';
-const DEFAULT_TERTIARY_COLOR = '#f4f6f3';
-const EMPTY_FILL = '#f4f6f3';
+const DEFAULT_PRIMARY_COLOR = goalRed;
+const DEFAULT_SECONDARY_COLOR = rinkNavy;
+const DEFAULT_TERTIARY_COLOR = iceWhite;
+const EMPTY_FILL = iceWhite;
 const EMPTY_STROKE = '#8f9a94';
-const EMPTY_TEXT = '#59636e';
+const EMPTY_TEXT = slateGrey;
 
 export function JerseyIcon({
   primaryColor = DEFAULT_PRIMARY_COLOR,
@@ -110,6 +111,7 @@ export function JerseyIcon({
         />
         <SvgText
           fill={textColor}
+          fontFamily={fonts.display}
           fontSize={fontSize}
           fontWeight="900"
           textAnchor="middle"
@@ -135,5 +137,5 @@ function getReadableTextColor(backgroundColor: string) {
   const blue = Number.parseInt(normalized.slice(4, 6), 16);
   const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
 
-  return luminance > 0.62 ? '#15251f' : '#ffffff';
+  return luminance > 0.62 ? rinkNavy : '#ffffff';
 }

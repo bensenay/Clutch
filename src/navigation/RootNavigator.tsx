@@ -16,6 +16,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { CompleteCoachOnboardingScreen } from '../screens/CompleteCoachOnboardingScreen';
 import { ActiveTeamProvider } from '../teams/ActiveTeamContext';
+import { goalRed, rinkNavy } from '../theme/theme';
 import { AuthenticatedStack } from './AuthenticatedStack';
 import { AuthStack } from './AuthStack';
 
@@ -30,7 +31,7 @@ export function RootNavigator() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#b8442f" size="large" />
+        <ActivityIndicator color={goalRed} size="large" />
       </View>
     );
   }
@@ -73,7 +74,7 @@ function AuthenticatedGate({ session }: { session: Session }) {
   if (profileQuery.isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#b8442f" size="large" />
+        <ActivityIndicator color={goalRed} size="large" />
       </View>
     );
   }
@@ -111,7 +112,7 @@ function AuthenticatedGate({ session }: { session: Session }) {
 const styles = StyleSheet.create({
   centered: {
     alignItems: 'center',
-    backgroundColor: '#f4f6f3',
+    backgroundColor: rinkNavy,
     flex: 1,
     gap: 12,
     justifyContent: 'center',

@@ -11,6 +11,7 @@ import type {
   AuthenticatedTabParamList,
 } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import { colors, fonts, goalRed } from '../theme/theme';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AuthenticatedTabParamList, 'RosterTab'>,
@@ -84,6 +85,7 @@ export function RosterScreen({ navigation }: Props) {
     <AppScreen
       action={
         <Button
+          color={goalRed}
           title={t('roster.addPlayerButton')}
           onPress={() => navigation.navigate('PlayerForm')}
         />
@@ -106,6 +108,7 @@ export function RosterScreen({ navigation }: Props) {
             {t('roster.emptyDescription')}
           </Text>
           <Button
+            color={goalRed}
             title={t('roster.addFirstPlayerButton')}
             onPress={() => navigation.navigate('PlayerForm')}
           />
@@ -165,10 +168,10 @@ function StatusBadge({ status }: { status: PlayerStatus }) {
 
 const styles = StyleSheet.create({
   activeBadge: {
-    backgroundColor: '#e7ede8',
+    backgroundColor: colors.successSoft,
   },
   activeBadgeText: {
-    color: '#276749',
+    color: colors.success,
   },
   badge: {
     borderRadius: 999,
@@ -186,13 +189,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   injuredBadge: {
-    backgroundColor: '#fff3cd',
+    backgroundColor: colors.dangerSoft,
   },
   injuredBadgeText: {
-    color: '#8a5a00',
+    color: goalRed,
   },
   jersey: {
-    color: '#15251f',
+    color: colors.textPrimary,
+    fontFamily: fonts.display,
     fontSize: 18,
     fontWeight: '800',
     minWidth: 44,
@@ -202,12 +206,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pressed: {
-    backgroundColor: '#e7ede8',
+    backgroundColor: colors.cardPressed,
   },
   suspendedBadge: {
-    backgroundColor: '#fde2e1',
+    backgroundColor: colors.dangerSoft,
   },
   suspendedBadgeText: {
-    color: '#b42318',
+    color: goalRed,
   },
 });

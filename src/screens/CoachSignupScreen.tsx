@@ -10,6 +10,7 @@ import {
   authStyles,
 } from '../components/AuthScreen';
 import type { AuthStackParamList } from '../navigation/types';
+import { goalRed } from '../theme/theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'CoachSignup'>;
 
@@ -81,6 +82,7 @@ export function CoachSignupScreen({ navigation }: Props) {
         <Text style={authStyles.note}>{confirmationMessage}</Text>
       ) : null}
       <Button
+        color={goalRed}
         disabled={isSubmitting}
         title={
           hasPendingConfirmation

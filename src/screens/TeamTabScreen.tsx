@@ -16,6 +16,7 @@ import {
   type ActiveTeam,
   useActiveTeam,
 } from '../teams/ActiveTeamContext';
+import { colors, fonts, goalRed, slateGrey } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 
 type Props = CompositeScreenProps<
@@ -350,6 +351,7 @@ function TeamDashboard({
                 : t('games.awayBadge')}
             </Text>
             <Button
+              color={goalRed}
               title={t('teamTab.openNextGameButton')}
               onPress={() => onOpenGame(nextGame.id)}
             />
@@ -381,11 +383,11 @@ function getTeamInitials(teamName: string) {
 
 const styles = StyleSheet.create({
   activeTeamName: {
-    color: '#b8442f',
+    color: goalRed,
   },
   activeTeamRow: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   dashboardHeader: {
     alignItems: 'center',
@@ -401,8 +403,8 @@ const styles = StyleSheet.create({
   },
   logoFrame: {
     alignItems: 'center',
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
     borderRadius: 32,
     borderWidth: 2,
     height: 64,
@@ -415,37 +417,38 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   logoPlaceholder: {
-    color: '#b8442f',
+    color: goalRed,
+    fontFamily: fonts.display,
     fontSize: 20,
     fontWeight: '900',
   },
   nextGameCard: {
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     gap: 6,
     padding: 12,
   },
   nextGameOpponent: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
   },
   sectionTitle: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   statCard: {
-    backgroundColor: '#f4f6f3',
+    backgroundColor: colors.cardPressed,
     borderRadius: 10,
     flex: 1,
     gap: 4,
     padding: 12,
   },
   statLabel: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -455,17 +458,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statValue: {
-    color: '#15251f',
+    color: colors.textPrimary,
+    fontFamily: fonts.display,
     fontSize: 22,
     fontWeight: '900',
   },
   teamName: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
   },
   teamRow: {
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     padding: 14,

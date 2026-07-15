@@ -11,6 +11,13 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
+import {
+  colors,
+  fonts,
+  goalRed,
+  radii,
+  slateGrey,
+} from '../theme/theme';
 
 type AuthScreenProps = PropsWithChildren<{
   title: string;
@@ -59,7 +66,7 @@ export function FormField({ label, style, ...props }: FormFieldProps) {
       <Text style={styles.label}>{label}</Text>
       <TextInput
         autoCapitalize="none"
-        placeholderTextColor="#7d8794"
+        placeholderTextColor={slateGrey}
         style={[styles.input, style]}
         {...props}
       />
@@ -94,11 +101,11 @@ export function AuthFooterLink({ onPress }: AuthFooterLinkProps) {
 
 export const authStyles = StyleSheet.create({
   error: {
-    color: '#b42318',
+    color: goalRed,
     lineHeight: 20,
   },
   note: {
-    color: '#59636e',
+    color: colors.frostSteel,
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
@@ -111,7 +118,7 @@ export const authStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: '#f4f6f3',
+    backgroundColor: colors.rinkNavy,
   },
   container: {
     flexGrow: 1,
@@ -126,19 +133,20 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   eyebrow: {
-    color: '#b8442f',
+    color: colors.hornAmber,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
   },
   title: {
-    color: '#15251f',
+    color: colors.textOnDark,
+    fontFamily: fonts.display,
     fontSize: 32,
     fontWeight: '700',
     letterSpacing: -0.8,
   },
   description: {
-    color: '#59636e',
+    color: colors.frostSteel,
     fontSize: 16,
     lineHeight: 23,
   },
@@ -150,22 +158,22 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   label: {
-    color: '#25332e',
+    color: colors.frostSteel,
     fontSize: 14,
     fontWeight: '600',
   },
   input: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
-    borderRadius: 10,
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
+    borderRadius: radii.md,
     borderWidth: 1,
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 16,
     minHeight: 50,
     paddingHorizontal: 14,
   },
   footerAction: {
-    color: '#b8442f',
+    color: colors.hornAmber,
     fontWeight: '700',
   },
   footerLink: {
@@ -173,7 +181,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   footerText: {
-    color: '#59636e',
+    color: colors.frostSteel,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',

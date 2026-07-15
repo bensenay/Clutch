@@ -11,6 +11,7 @@ import {
 } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import { colors, goalRed, slateGrey } from '../theme/theme';
 import type { Game } from './GameListScreen';
 
 type Props = NativeStackScreenProps<AuthenticatedStackParamList, 'GameForm'>;
@@ -258,6 +259,7 @@ export function GameFormScreen({ navigation, route }: Props) {
         </View>
         {error ? <Text style={authStyles.error}>{error}</Text> : null}
         <Button
+          color={goalRed}
           disabled={isSubmitting || gameQuery.isLoading}
           title={
             isSubmitting ? t('gameForm.saving') : t('gameForm.saveButton')
@@ -266,6 +268,7 @@ export function GameFormScreen({ navigation, route }: Props) {
         />
         {gameId ? (
           <Button
+            color={goalRed}
             disabled={isSubmitting || gameQuery.isLoading}
             title={t('gameForm.lineupButton')}
             onPress={() => navigation.navigate('LineupBuilder', { gameId })}
@@ -326,6 +329,7 @@ function GameDateTimePicker({
       </Text>
       <View style={styles.monthHeader}>
         <Button
+          color={goalRed}
           title={t('gameForm.previousMonthButton')}
           onPress={() =>
             setCalendarMonth(addMonths(calendarMonth, -1))
@@ -335,6 +339,7 @@ function GameDateTimePicker({
           {formatMonth(calendarMonth, locale)}
         </Text>
         <Button
+          color={goalRed}
           title={t('gameForm.nextMonthButton')}
           onPress={() => setCalendarMonth(addMonths(calendarMonth, 1))}
         />
@@ -376,6 +381,7 @@ function GameDateTimePicker({
         <Text style={styles.selectorLabel}>{t('gameForm.timeLabel')}</Text>
         <View style={styles.timeSummaryRow}>
           <Button
+            color={goalRed}
             title={t('gameForm.hourDownButton')}
             onPress={() => selectHour((selectedHour + 23) % 24)}
           />
@@ -383,6 +389,7 @@ function GameDateTimePicker({
             {formatTime(displayDate, locale)}
           </Text>
           <Button
+            color={goalRed}
             title={t('gameForm.hourUpButton')}
             onPress={() => selectHour((selectedHour + 1) % 24)}
           />
@@ -495,13 +502,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dateSummary: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   dayButton: {
     alignItems: 'center',
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     justifyContent: 'center',
@@ -509,7 +516,7 @@ const styles = StyleSheet.create({
     width: '13%',
   },
   dayButtonText: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -525,7 +532,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   monthTitle: {
-    color: '#15251f',
+    color: colors.textPrimary,
     flex: 1,
     fontSize: 16,
     fontWeight: '800',
@@ -533,23 +540,23 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   selected: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   selectedText: {
-    color: '#b8442f',
+    color: goalRed,
   },
   selectorGroup: {
     gap: 7,
   },
   selectorLabel: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   selectorOption: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 14,
@@ -561,7 +568,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectorOptionText: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -570,7 +577,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   timeSummary: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: '800',
   },
@@ -585,7 +592,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   weekdayLabel: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 12,
     fontWeight: '800',
     textAlign: 'center',

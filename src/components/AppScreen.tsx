@@ -6,6 +6,14 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import {
+  colors,
+  fonts,
+  goalRed,
+  radii,
+  slateGrey,
+  spacing,
+} from '../theme/theme';
 
 type AppScreenProps = PropsWithChildren<{
   title: string;
@@ -41,25 +49,25 @@ export function AppScreen({
 
 export const appScreenStyles = StyleSheet.create({
   card: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
     borderWidth: 1,
-    gap: 8,
+    gap: spacing.sm,
     padding: 18,
   },
   cardDescription: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 14,
     lineHeight: 20,
   },
   cardTitle: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   error: {
-    color: '#b42318',
+    color: goalRed,
     lineHeight: 20,
   },
   list: {
@@ -72,12 +80,12 @@ export const appScreenStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   meta: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 13,
     lineHeight: 18,
   },
   note: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -85,7 +93,7 @@ export const appScreenStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f4f6f3',
+    backgroundColor: colors.rinkNavy,
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingVertical: 48,
@@ -97,12 +105,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   description: {
-    color: '#59636e',
+    color: colors.frostSteel,
     fontSize: 16,
     lineHeight: 23,
   },
   eyebrow: {
-    color: '#b8442f',
+    color: colors.hornAmber,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
@@ -115,7 +123,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   title: {
-    color: '#15251f',
+    color: colors.textOnDark,
+    fontFamily: fonts.display,
     fontSize: 32,
     fontWeight: '700',
     letterSpacing: -0.8,

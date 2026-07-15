@@ -18,6 +18,7 @@ import {
 } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import { colors, goalRed } from '../theme/theme';
 import type {
   NaturalPosition,
   Player,
@@ -370,6 +371,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
         />
         {error ? <Text style={authStyles.error}>{error}</Text> : null}
         <Button
+          color={goalRed}
           disabled={isSubmitting || playerQuery.isLoading}
           title={
             isSubmitting
@@ -380,7 +382,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
         />
         {isEditing ? (
           <Button
-            color="#b42318"
+            color={goalRed}
             disabled={isSubmitting}
             title={t('playerForm.removeButton')}
             onPress={confirmRemove}
@@ -443,23 +445,23 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   selected: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   selectedText: {
-    color: '#b8442f',
+    color: goalRed,
   },
   selectorGroup: {
     gap: 7,
   },
   selectorLabel: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   selectorOption: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 14,
@@ -471,7 +473,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectorOptionText: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },

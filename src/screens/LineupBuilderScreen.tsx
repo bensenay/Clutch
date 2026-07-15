@@ -16,6 +16,14 @@ import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { JerseyIcon } from '../components/JerseyIcon';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import {
+  colors,
+  fonts,
+  goalRed,
+  hornAmber,
+  iceWhite,
+  rinkNavy,
+} from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 import type { Player } from './RosterScreen';
 
@@ -75,9 +83,9 @@ type SavedLineupRow = LineupRow & {
     | null;
 };
 
-const DEFAULT_TEAM_COLOR = '#b8442f';
-const DEFAULT_SECONDARY_COLOR = '#15251f';
-const DEFAULT_TERTIARY_COLOR = '#f4f6f3';
+const DEFAULT_TEAM_COLOR = goalRed;
+const DEFAULT_SECONDARY_COLOR = rinkNavy;
+const DEFAULT_TERTIARY_COLOR = iceWhite;
 const EMPTY_PLAYERS: Player[] = [];
 const VIEW_ORDER: LineupView[] = ['lines', 'power_play', 'penalty_kill'];
 const FOURTH_FORWARD_LINE_NUMBER = 4;
@@ -660,8 +668,13 @@ export function LineupBuilderScreen({ route }: Props) {
       {successMessage ? (
         <Text style={styles.successMessage}>{successMessage}</Text>
       ) : null}
-      <Button title={t('lineup.resetButton')} onPress={resetCurrentView} />
       <Button
+        color={goalRed}
+        title={t('lineup.resetButton')}
+        onPress={resetCurrentView}
+      />
+      <Button
+        color={goalRed}
         disabled={isSaving}
         title={isSaving ? t('lineup.saving') : t('lineup.saveButton')}
         onPress={() => void handleSave()}
@@ -757,6 +770,7 @@ function SavedLineupPicker({
               ) : null}
             </View>
             <Button
+              color={goalRed}
               title={t('lineup.applySavedButton')}
               onPress={() => onApply(lineup)}
             />
@@ -821,7 +835,11 @@ function SlotView({
           : label || t('lineup.emptySlot')}
       </Text>
       {player && removeSlotKey === slotKey ? (
-        <Button title={t('lineup.removeSlotButton')} onPress={onRemove} />
+        <Button
+          color={goalRed}
+          title={t('lineup.removeSlotButton')}
+          onPress={onRemove}
+        />
       ) : null}
     </Pressable>
   );
@@ -980,6 +998,7 @@ function renderForwardLineSection({
         </View>
       ))}
       <Button
+        color={goalRed}
         title={
           showFourthForwardLine
             ? t('lineup.removeFourthLineButton')
@@ -1534,17 +1553,17 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   filledSlot: {
-    backgroundColor: '#f4f6f3',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   goalieName: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   goalieRow: {
     alignItems: 'center',
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
@@ -1560,7 +1579,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   playerChipName: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '700',
     maxWidth: 74,
@@ -1580,7 +1599,7 @@ const styles = StyleSheet.create({
   },
   savedLineupRow: {
     alignItems: 'center',
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
@@ -1589,17 +1608,17 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   savedLineupTitle: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
   },
   selectedPlayerChip: {
-    borderColor: '#15251f',
+    borderColor: goalRed,
     borderWidth: 3,
   },
   slot: {
     alignItems: 'center',
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
     flex: 1,
@@ -1614,7 +1633,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   slotValue: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
@@ -1623,11 +1642,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   starterRow: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.warningSoft,
+    borderColor: hornAmber,
   },
   starterText: {
-    color: '#b8442f',
+    color: hornAmber,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1637,27 +1656,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   switcherOption: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
+    backgroundColor: colors.card,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   switcherOptionActive: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   switcherText: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
   switcherTextActive: {
-    color: '#b8442f',
+    color: goalRed,
   },
   successMessage: {
-    color: '#276749',
+    color: colors.success,
     fontWeight: '700',
     lineHeight: 20,
   },
@@ -1665,7 +1684,8 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   unitTitle: {
-    color: '#25332e',
+    color: colors.textPrimary,
+    fontFamily: fonts.display,
     fontSize: 14,
     fontWeight: '800',
   },

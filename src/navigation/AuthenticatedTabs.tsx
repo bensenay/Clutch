@@ -6,6 +6,7 @@ import { GameListScreen } from '../screens/GameListScreen';
 import { PracticesScreen } from '../screens/PracticesScreen';
 import { RosterScreen } from '../screens/RosterScreen';
 import { TeamTabScreen } from '../screens/TeamTabScreen';
+import { colors, fonts, frostSteel, iceWhite, rinkNavy } from '../theme/theme';
 import type {
   AuthenticatedStackParamList,
   AuthenticatedTabParamList,
@@ -33,15 +34,19 @@ export function AuthenticatedTabs({ navigation }: AuthenticatedTabsProps) {
             onPress={() => navigation.navigate('Settings')}
             style={{ paddingHorizontal: 16, paddingVertical: 8 }}
           >
-            <Text style={{ color: '#15251f', fontSize: 22 }}>⚙</Text>
+            <Text style={{ color: iceWhite, fontSize: 22 }}>⚙</Text>
           </Pressable>
         ),
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: '#f4f6f3' },
-        headerTintColor: '#15251f',
-        tabBarActiveTintColor: '#b8442f',
-        tabBarInactiveTintColor: '#59636e',
-        tabBarStyle: { backgroundColor: '#ffffff' },
+        headerStyle: { backgroundColor: rinkNavy },
+        headerTintColor: iceWhite,
+        headerTitleStyle: { fontFamily: fonts.display },
+        tabBarActiveTintColor: iceWhite,
+        tabBarInactiveTintColor: frostSteel,
+        tabBarStyle: {
+          backgroundColor: rinkNavy,
+          borderTopColor: colors.rinkSurface,
+        },
       }}
     >
       <Tab.Screen

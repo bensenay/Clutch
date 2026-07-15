@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { colors, radii, slateGrey } from '../theme/theme';
 
 type ChoiceButtonProps = {
   title: string;
@@ -25,23 +26,23 @@ export function ChoiceButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.md,
     borderWidth: 1,
     gap: 5,
     padding: 18,
   },
   pressed: {
-    backgroundColor: '#e7ede8',
+    backgroundColor: colors.cardPressed,
   },
   title: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   description: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 14,
     lineHeight: 20,
   },

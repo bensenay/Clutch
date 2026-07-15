@@ -22,6 +22,13 @@ import type {
   AuthenticatedTabParamList,
 } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
+import {
+  colors,
+  fonts,
+  goalRed,
+  rinkNavy,
+  slateGrey,
+} from '../theme/theme';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AuthenticatedTabParamList, 'GameDayTab'>,
@@ -67,7 +74,7 @@ type ScheduleEvent = {
 
 const VIEW_OPTIONS: ScheduleView[] = ['list', 'week', 'month'];
 const FILTER_OPTIONS: ScheduleFilter[] = ['all', 'games', 'practices'];
-const NEUTRAL_EVENT_COLOR = '#59636e';
+const NEUTRAL_EVENT_COLOR = slateGrey;
 
 function sortGames(games: Game[]) {
   const now = Date.now();
@@ -150,8 +157,8 @@ export function GameListScreen({ navigation }: Props) {
   const games = gamesQuery.data ?? [];
   const practices = practicesQuery.data ?? [];
   const eventColors = {
-    home: activeTeam?.primary_color ?? '#b8442f',
-    away: activeTeam?.secondary_color ?? '#15251f',
+    home: activeTeam?.primary_color ?? goalRed,
+    away: activeTeam?.secondary_color ?? rinkNavy,
     practice: activeTeam?.tertiary_color ?? NEUTRAL_EVENT_COLOR,
   };
   const allEvents = useMemo(
@@ -248,11 +255,13 @@ export function GameListScreen({ navigation }: Props) {
         <View style={styles.headerActions}>
           {activeView === 'list' ? (
             <Button
+              color={goalRed}
               title={t('games.addGameButton')}
               onPress={() => navigation.navigate('GameForm')}
             />
           ) : (
             <Button
+              color={goalRed}
               disabled={isExporting}
               title={
                 isExporting
@@ -354,6 +363,7 @@ function GameScheduleList({
             {t('games.emptyDescription')}
           </Text>
           <Button
+            color={goalRed}
             title={t('games.addFirstGameButton')}
             onPress={navigateToNewGame}
           />
@@ -391,6 +401,7 @@ function GameScheduleList({
               </View>
             </Pressable>
             <Button
+              color={goalRed}
               title={t('gameForm.lineupButton')}
               onPress={() => navigateToLineup(game.id)}
             />
@@ -721,7 +732,7 @@ function makeMarkedDates(events: ScheduleEvent[], selectedDateKey: string) {
   markedDates[selectedDateKey] = {
     ...(markedDates[selectedDateKey] ?? {}),
     selected: true,
-    selectedColor: '#e7ede8',
+    selectedColor: colors.cardPressed,
   };
 
   return markedDates;
@@ -765,10 +776,10 @@ function buildScheduleExportHtml({
       <head>
         <meta charset="utf-8" />
         <style>
-          body { color: #15251f; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 28px; }
+          body { color: ${rinkNavy}; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 28px; }
           h1 { margin-bottom: 4px; }
-          h2 { color: #59636e; font-size: 16px; margin-top: 0; }
-          li { border-left: 5px solid #b8442f; list-style: none; margin: 12px 0; padding: 10px 12px; }
+          h2 { color: ${slateGrey}; font-size: 16px; margin-top: 0; }
+          li { border-left: 5px solid ${goalRed}; list-style: none; margin: 12px 0; padding: 10px 12px; }
           ul { margin: 0; padding: 0; }
         </style>
       </head>
@@ -874,7 +885,7 @@ function getReadableTextColor(backgroundColor: string) {
   const blue = Number.parseInt(normalized.slice(4, 6), 16);
   const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
 
-  return luminance > 0.62 ? '#15251f' : '#ffffff';
+  return luminance > 0.62 ? rinkNavy : '#ffffff';
 }
 
 export function formatGameDate(value: string) {
@@ -892,19 +903,19 @@ export function formatGameDate(value: string) {
 
 const styles = StyleSheet.create({
   badge: {
-    backgroundColor: '#e7ede8',
+    backgroundColor: colors.successSoft,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   badgeText: {
-    color: '#276749',
+    color: colors.success,
     fontSize: 12,
     fontWeight: '700',
   },
   calendarCard: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
+    backgroundColor: colors.card,
+    borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
@@ -917,7 +928,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   emptyDayText: {
-    color: '#8f9a94',
+    color: slateGrey,
     fontSize: 12,
     lineHeight: 16,
   },
@@ -925,13 +936,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   eventRow: {
-    backgroundColor: '#f4f6f3',
+    backgroundColor: colors.cardPressed,
     borderLeftWidth: 5,
     borderRadius: 10,
     padding: 12,
   },
   eventText: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -939,15 +950,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   moreEventsText: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 11,
     fontWeight: '700',
     marginTop: 4,
   },
   monthDayBox: {
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderColor: '#d6deda',
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
     height: 38,
@@ -960,7 +971,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   monthDayBoxSelected: {
-    borderColor: '#b8442f',
+    borderColor: goalRed,
     borderWidth: 2,
   },
   monthDayCount: {
@@ -971,15 +982,16 @@ const styles = StyleSheet.create({
     right: 4,
   },
   monthDayText: {
-    color: '#15251f',
+    color: colors.textPrimary,
+    fontFamily: fonts.display,
     fontSize: 14,
     fontWeight: '800',
   },
   monthDayTextDisabled: {
-    color: '#8f9a94',
+    color: slateGrey,
   },
   pressed: {
-    backgroundColor: '#e7ede8',
+    backgroundColor: colors.cardPressed,
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -987,28 +999,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   segmentedOption: {
-    backgroundColor: '#ffffff',
-    borderColor: '#ccd3ce',
+    backgroundColor: colors.card,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   segmentedOptionActive: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   segmentedOptionText: {
-    color: '#25332e',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
   segmentedOptionTextActive: {
-    color: '#b8442f',
+    color: goalRed,
   },
   weekDay: {
     alignItems: 'center',
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
@@ -1022,28 +1034,29 @@ const styles = StyleSheet.create({
     width: 46,
   },
   weekDayLabel: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   weekDayNumber: {
-    color: '#15251f',
+    color: colors.textPrimary,
+    fontFamily: fonts.display,
     fontSize: 20,
     fontWeight: '900',
   },
   weekDaySelected: {
-    borderColor: '#b8442f',
+    borderColor: goalRed,
   },
   weekEvent: {
-    backgroundColor: '#f4f6f3',
+    backgroundColor: colors.cardPressed,
     borderLeftWidth: 5,
     borderRadius: 8,
     flex: 1,
     padding: 8,
   },
   weekEventText: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '800',
     lineHeight: 16,

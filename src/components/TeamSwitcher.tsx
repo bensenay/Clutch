@@ -5,6 +5,7 @@ import {
   useActiveTeam,
 } from '../teams/ActiveTeamContext';
 import { appScreenStyles } from './AppScreen';
+import { colors, goalRed, slateGrey } from '../theme/theme';
 
 type TeamSwitcherProps = {
   teams: ActiveTeam[];
@@ -60,21 +61,21 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
 
 const styles = StyleSheet.create({
   activeOption: {
-    backgroundColor: '#e7ede8',
-    borderColor: '#b8442f',
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
   },
   activeOptionTitle: {
-    color: '#b8442f',
+    color: goalRed,
   },
   option: {
-    borderColor: '#ccd3ce',
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     gap: 4,
     padding: 14,
   },
   optionMeta: {
-    color: '#59636e',
+    color: slateGrey,
     fontSize: 13,
   },
   options: {
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   optionTitle: {
-    color: '#15251f',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },

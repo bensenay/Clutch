@@ -10,6 +10,7 @@ import {
   authStyles,
 } from '../components/AuthScreen';
 import type { AuthStackParamList } from '../navigation/types';
+import { goalRed } from '../theme/theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -77,6 +78,7 @@ export function SignInScreen(_props: Props) {
         <Text style={authStyles.error}>{onboardingError}</Text>
       ) : null}
       <Button
+        color={goalRed}
         disabled={isSubmitting || isResolvingOnboarding}
         title={
           isSubmitting || isResolvingOnboarding

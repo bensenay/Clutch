@@ -8,6 +8,7 @@ import { DirectorSettingsScreen } from '../screens/DirectorSettingsScreen';
 import { PlayerFormScreen } from '../screens/PlayerFormScreen';
 import { PracticePlanDetailScreen } from '../screens/PracticePlanDetailScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { fonts, iceWhite, rinkNavy } from '../theme/theme';
 import type { AuthenticatedStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AuthenticatedStackParamList>();
@@ -19,11 +20,12 @@ export function AuthenticatedStack() {
     <Stack.Navigator
       initialRouteName="MainTabs"
       screenOptions={{
-        contentStyle: { backgroundColor: '#f4f6f3' },
+        contentStyle: { backgroundColor: rinkNavy },
         headerBackTitle: t('common.back'),
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: '#f4f6f3' },
-        headerTintColor: '#15251f',
+        headerStyle: { backgroundColor: rinkNavy },
+        headerTintColor: iceWhite,
+        headerTitleStyle: { fontFamily: fonts.display },
       }}
     >
       <Stack.Screen

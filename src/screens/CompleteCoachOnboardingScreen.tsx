@@ -10,6 +10,7 @@ import {
   authStyles,
 } from '../components/AuthScreen';
 import { ChoiceButton } from '../components/ChoiceButton';
+import { goalRed } from '../theme/theme';
 
 type OnboardingMode = 'join' | 'independent' | null;
 
@@ -159,6 +160,7 @@ export function CompleteCoachOnboardingScreen({
           />
           {error ? <Text style={authStyles.error}>{error}</Text> : null}
           <Button
+            color={goalRed}
             disabled={isSubmitting}
             title={
               isSubmitting
@@ -168,6 +170,7 @@ export function CompleteCoachOnboardingScreen({
             onPress={() => void handleJoinOrganization()}
           />
           <Button
+            color={goalRed}
             disabled={isSubmitting}
             title={t('common.back')}
             onPress={resetChoice}
@@ -191,6 +194,7 @@ export function CompleteCoachOnboardingScreen({
           />
           {error ? <Text style={authStyles.error}>{error}</Text> : null}
           <Button
+            color={goalRed}
             disabled={isSubmitting}
             title={
               isSubmitting
@@ -200,6 +204,7 @@ export function CompleteCoachOnboardingScreen({
             onPress={() => void handleCreateIndependentTeam()}
           />
           <Button
+            color={goalRed}
             disabled={isSubmitting}
             title={t('common.back')}
             onPress={resetChoice}
