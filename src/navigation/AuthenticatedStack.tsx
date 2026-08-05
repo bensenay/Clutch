@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AuthenticatedTabs } from './AuthenticatedTabs';
 import { DirectorAllTeamsScreen } from '../screens/DirectorAllTeamsScreen';
+import { DirectorAssistantCoachesScreen } from '../screens/DirectorAssistantCoachesScreen';
 import { GameFormScreen } from '../screens/GameFormScreen';
 import { LineupBuilderScreen } from '../screens/LineupBuilderScreen';
 import { DirectorSettingsScreen } from '../screens/DirectorSettingsScreen';
@@ -49,6 +50,11 @@ export function AuthenticatedStack() {
         options={{ title: t('directorSettings.title') }}
       />
       <Stack.Screen
+        component={DirectorAssistantCoachesScreen}
+        name="DirectorAssistantCoaches"
+        options={{ title: t('directorAssistantCoaches.headerTitle') }}
+      />
+      <Stack.Screen
         component={PlayerFormScreen}
         name="PlayerForm"
         options={({ route }) => ({
@@ -74,7 +80,11 @@ export function AuthenticatedStack() {
       <Stack.Screen
         component={PracticePlanDetailScreen}
         name="PracticePlanDetail"
-        options={{ title: t('practiceDetail.title') }}
+        options={({ route }) => ({
+          title: route.params?.practicePlanId
+            ? t('practiceDetail.editHeaderTitle')
+            : t('practiceDetail.addHeaderTitle'),
+        })}
       />
     </Stack.Navigator>
   );

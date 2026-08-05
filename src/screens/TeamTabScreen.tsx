@@ -7,6 +7,7 @@ import { Button, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
+import { AssistantAssignmentSchedule } from '../components/AssistantAssignmentSchedule';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import type {
   AuthenticatedStackParamList,
@@ -50,7 +51,11 @@ const EMPTY_TEAMS: ActiveTeam[] = [];
 export function TeamTabScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { session } = useAuth();
-  const { activeTeam, setActiveTeam } = useActiveTeam();
+  const {
+    activeTeam,
+    activeTeamAccess,
+    setActiveTeam,
+  } = useActiveTeam();
 
   const profileQuery = useQuery({
     queryKey: ['profile', session?.user.id],
@@ -137,12 +142,20 @@ export function TeamTabScreen({ navigation }: Props) {
     Boolean(coachTeamsQuery.error);
 
   useEffect(() => {
-    if (profile?.role === 'coach' && teams.length === 1) {
+    if (
+      profile?.role === 'coach' &&
+      teams.length === 1 &&
+      activeTeamAccess.mode === 'membership'
+    ) {
       setActiveTeam(teams[0]);
     }
-  }, [profile?.role, setActiveTeam, teams]);
+  }, [activeTeamAccess.mode, profile?.role, setActiveTeam, teams]);
 
   useEffect(() => {
+    if (activeTeamAccess.mode === 'assignment') {
+      return;
+    }
+
     if (!activeTeam || teams.length === 0) {
       return;
     }
@@ -150,7 +163,7 @@ export function TeamTabScreen({ navigation }: Props) {
     if (!teams.some((team) => team.id === activeTeam.id)) {
       setActiveTeam(null);
     }
-  }, [activeTeam, setActiveTeam, teams]);
+  }, [activeTeam, activeTeamAccess.mode, setActiveTeam, teams]);
 
   return (
     <AppScreen
@@ -173,10 +186,21 @@ export function TeamTabScreen({ navigation }: Props) {
           </Text>
         </View>
       ) : null}
+      {profile?.role === 'coach' && teams.length === 0 && session ? (
+        <AssistantAssignmentSchedule
+          navigation={navigation}
+          userId={session.user.id}
+        />
+      ) : null}
       {activeTeam ? (
         <TeamDashboard
           team={activeTeam}
-          onOpenGame={(gameId) => navigation.navigate('GameForm', { gameId })}
+          onOpenGame={(gameId) =>
+            navigation.navigate('GameForm', {
+              gameId,
+              readOnly: activeTeamAccess.mode === 'assignment',
+            })
+          }
         />
       ) : null}
       {(profile?.role === 'director' ||
@@ -213,7 +237,14 @@ export function TeamTabScreen({ navigation }: Props) {
           </View>
         </View>
       ) : null}
+      {profile?.role === 'coach' && teams.length > 0 && session ? (
+        <AssistantAssignmentSchedule
+          navigation={navigation}
+          userId={session.user.id}
+        />
+      ) : null}
       {!isLoading && profile?.role !== 'super_admin' && teams.length === 0 ? (
+        profile?.role === 'coach' ? null : (
         <View style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>
             {t('teamTab.emptyTitle')}
@@ -222,6 +253,7 @@ export function TeamTabScreen({ navigation }: Props) {
             {t('teamTab.emptyDescription')}
           </Text>
         </View>
+        )
       ) : null}
     </AppScreen>
   );

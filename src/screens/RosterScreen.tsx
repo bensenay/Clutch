@@ -42,7 +42,7 @@ export type Player = {
 
 export function RosterScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { activeTeam } = useActiveTeam();
+  const { activeTeam, isReadOnlyTeam } = useActiveTeam();
 
   const playersQuery = useQuery({
     queryKey: ['players', activeTeam?.id],
@@ -84,11 +84,13 @@ export function RosterScreen({ navigation }: Props) {
   return (
     <AppScreen
       action={
-        <Button
-          color={goalRed}
-          title={t('roster.addPlayerButton')}
-          onPress={() => navigation.navigate('PlayerForm')}
-        />
+        isReadOnlyTeam ? undefined : (
+          <Button
+            color={goalRed}
+            title={t('roster.addPlayerButton')}
+            onPress={() => navigation.navigate('PlayerForm')}
+          />
+        )
       }
       description={t('roster.description', { teamName: activeTeam.name })}
       title={t('roster.title')}
@@ -107,11 +109,13 @@ export function RosterScreen({ navigation }: Props) {
           <Text style={appScreenStyles.cardDescription}>
             {t('roster.emptyDescription')}
           </Text>
-          <Button
-            color={goalRed}
-            title={t('roster.addFirstPlayerButton')}
-            onPress={() => navigation.navigate('PlayerForm')}
-          />
+          {isReadOnlyTeam ? null : (
+            <Button
+              color={goalRed}
+              title={t('roster.addFirstPlayerButton')}
+              onPress={() => navigation.navigate('PlayerForm')}
+            />
+          )}
         </View>
       ) : null}
       <View style={appScreenStyles.list}>
@@ -120,7 +124,10 @@ export function RosterScreen({ navigation }: Props) {
             accessibilityRole="button"
             key={player.id}
             onPress={() =>
-              navigation.navigate('PlayerForm', { playerId: player.id })
+              navigation.navigate('PlayerForm', {
+                playerId: player.id,
+                readOnly: isReadOnlyTeam,
+              })
             }
             style={({ pressed }) => [
               appScreenStyles.card,

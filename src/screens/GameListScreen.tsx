@@ -99,7 +99,7 @@ function sortGames(games: Game[]) {
 
 export function GameListScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { activeTeam } = useActiveTeam();
+  const { activeTeam, isReadOnlyTeam } = useActiveTeam();
   const [activeView, setActiveView] = useState<ScheduleView>('list');
   const [activeFilter, setActiveFilter] = useState<ScheduleFilter>('all');
   const [selectedDateKey, setSelectedDateKey] = useState(() =>
@@ -193,11 +193,17 @@ export function GameListScreen({ navigation }: Props) {
 
   function navigateToEvent(event: ScheduleEvent) {
     if (event.type === 'practice') {
-      navigation.navigate('PracticePlanDetail', { practicePlanId: event.id });
+      navigation.navigate('PracticePlanDetail', {
+        practicePlanId: event.id,
+        readOnly: isReadOnlyTeam,
+      });
       return;
     }
 
-    navigation.navigate('GameForm', { gameId: event.id });
+    navigation.navigate('GameForm', {
+      gameId: event.id,
+      readOnly: isReadOnlyTeam,
+    });
   }
 
   async function exportCurrentView() {
@@ -254,11 +260,13 @@ export function GameListScreen({ navigation }: Props) {
       action={
         <View style={styles.headerActions}>
           {activeView === 'list' ? (
-            <Button
-              color={goalRed}
-              title={t('games.addGameButton')}
-              onPress={() => navigation.navigate('GameForm')}
-            />
+            isReadOnlyTeam ? null : (
+              <Button
+                color={goalRed}
+                title={t('games.addGameButton')}
+                onPress={() => navigation.navigate('GameForm')}
+              />
+            )
           ) : (
             <Button
               color={goalRed}
@@ -303,9 +311,18 @@ export function GameListScreen({ navigation }: Props) {
         <GameScheduleList
           games={games}
           isLoading={gamesQuery.isLoading}
-          navigateToGame={(gameId) => navigation.navigate('GameForm', { gameId })}
+          isReadOnly={isReadOnlyTeam}
+          navigateToGame={(gameId) =>
+            navigation.navigate('GameForm', {
+              gameId,
+              readOnly: isReadOnlyTeam,
+            })
+          }
           navigateToLineup={(gameId) =>
-            navigation.navigate('LineupBuilder', { gameId })
+            navigation.navigate('LineupBuilder', {
+              gameId,
+              readOnly: isReadOnlyTeam,
+            })
           }
           navigateToNewGame={() => navigation.navigate('GameForm')}
         />
@@ -340,12 +357,14 @@ export function GameListScreen({ navigation }: Props) {
 function GameScheduleList({
   games,
   isLoading,
+  isReadOnly,
   navigateToGame,
   navigateToLineup,
   navigateToNewGame,
 }: {
   games: Game[];
   isLoading: boolean;
+  isReadOnly: boolean;
   navigateToGame: (gameId: string) => void;
   navigateToLineup: (gameId: string) => void;
   navigateToNewGame: () => void;
@@ -362,11 +381,13 @@ function GameScheduleList({
           <Text style={appScreenStyles.cardDescription}>
             {t('games.emptyDescription')}
           </Text>
-          <Button
-            color={goalRed}
-            title={t('games.addFirstGameButton')}
-            onPress={navigateToNewGame}
-          />
+          {isReadOnly ? null : (
+            <Button
+              color={goalRed}
+              title={t('games.addFirstGameButton')}
+              onPress={navigateToNewGame}
+            />
+          )}
         </View>
       ) : null}
       <View style={appScreenStyles.list}>
@@ -402,7 +423,11 @@ function GameScheduleList({
             </Pressable>
             <Button
               color={goalRed}
-              title={t('gameForm.lineupButton')}
+              title={
+                isReadOnly
+                  ? t('gameForm.viewLineupButton')
+                  : t('gameForm.lineupButton')
+              }
               onPress={() => navigateToLineup(game.id)}
             />
           </View>

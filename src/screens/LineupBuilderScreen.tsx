@@ -99,8 +99,9 @@ type JerseyColors = {
 export function LineupBuilderScreen({ route }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { activeTeam } = useActiveTeam();
+  const { activeTeam, isReadOnlyTeam } = useActiveTeam();
   const { gameId } = route.params;
+  const isReadOnly = isReadOnlyTeam || Boolean(route.params.readOnly);
   const [activeView, setActiveView] = useState<LineupView>('lines');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [removeSlotKey, setRemoveSlotKey] = useState<string | null>(null);
@@ -192,7 +193,7 @@ export function LineupBuilderScreen({ route }: Props) {
 
       return (data ?? []) as SavedLineupRow[];
     },
-    enabled: Boolean(activeTeam),
+    enabled: Boolean(activeTeam) && !isReadOnly,
   });
 
   const players = playersQuery.data ?? EMPTY_PLAYERS;
@@ -522,9 +523,11 @@ export function LineupBuilderScreen({ route }: Props) {
           {t('lineup.playerPoolTitle')}
         </Text>
         <Text style={appScreenStyles.cardDescription}>
-          {t('lineup.playerPoolDescription')}
+          {isReadOnly
+            ? t('lineup.readOnlyDescription')
+            : t('lineup.playerPoolDescription')}
         </Text>
-        {poolPlayers.length === 0 ? (
+        {isReadOnly ? null : poolPlayers.length === 0 ? (
           <Text style={appScreenStyles.note}>
             {t('lineup.emptyPlayerPool')}
           </Text>
@@ -541,6 +544,7 @@ export function LineupBuilderScreen({ route }: Props) {
                   jerseyColors={jerseyColors}
                   key={player.id}
                   player={player}
+                  disabled={isReadOnly}
                   onPress={() => {
                     setSelectedPlayerId(player.id);
                     setRemoveSlotKey(null);
@@ -551,12 +555,14 @@ export function LineupBuilderScreen({ route }: Props) {
           </ScrollView>
         )}
       </View>
-      <SavedLineupPicker
-        isLoading={savedLineupsQuery.isLoading}
-        lineups={savedLineupsQuery.data ?? []}
-        loadError={Boolean(savedLineupsQuery.error)}
-        onApply={applySavedLineup}
-      />
+      {isReadOnly ? null : (
+        <SavedLineupPicker
+          isLoading={savedLineupsQuery.isLoading}
+          lineups={savedLineupsQuery.data ?? []}
+          loadError={Boolean(savedLineupsQuery.error)}
+          onApply={applySavedLineup}
+        />
+      )}
       {activeView === 'lines' ? (
         <>
           {renderForwardLineSection({
@@ -564,6 +570,7 @@ export function LineupBuilderScreen({ route }: Props) {
             lines: showFourthForwardLine ? lines : lines.slice(0, 3),
             showFourthForwardLine,
             playerById,
+            isReadOnly,
             removeSlotKey,
             setRemoveSlotKey,
             assignSelectedPlayer,
@@ -595,6 +602,7 @@ export function LineupBuilderScreen({ route }: Props) {
             title: t('lineup.defensePairsTitle'),
             pairs: defensePairs,
             playerById,
+            isReadOnly,
             removeSlotKey,
             setRemoveSlotKey,
             assignSelectedPlayer,
@@ -607,6 +615,7 @@ export function LineupBuilderScreen({ route }: Props) {
           })}
           <GoalieSection
             goalies={goalies}
+            isReadOnly={isReadOnly}
             playerById={playerById}
             onSetStarter={(playerId) =>
               setGoalies((currentGoalies) =>
@@ -624,6 +633,7 @@ export function LineupBuilderScreen({ route }: Props) {
           lines={powerPlayLines}
           pairs={powerPlayPairs}
           playerById={playerById}
+          isReadOnly={isReadOnly}
           removeSlotKey={removeSlotKey}
           setRemoveSlotKey={setRemoveSlotKey}
           title={t('lineup.powerPlayUnitsTitle')}
@@ -647,6 +657,7 @@ export function LineupBuilderScreen({ route }: Props) {
           lines={penaltyKillLines}
           pairs={penaltyKillPairs}
           playerById={playerById}
+          isReadOnly={isReadOnly}
           removeSlotKey={removeSlotKey}
           setRemoveSlotKey={setRemoveSlotKey}
           title={t('lineup.penaltyKillUnitsTitle')}
@@ -668,17 +679,23 @@ export function LineupBuilderScreen({ route }: Props) {
       {successMessage ? (
         <Text style={styles.successMessage}>{successMessage}</Text>
       ) : null}
-      <Button
-        color={goalRed}
-        title={t('lineup.resetButton')}
-        onPress={resetCurrentView}
-      />
-      <Button
-        color={goalRed}
-        disabled={isSaving}
-        title={isSaving ? t('lineup.saving') : t('lineup.saveButton')}
-        onPress={() => void handleSave()}
-      />
+      {isReadOnly ? (
+        <Text style={appScreenStyles.note}>{t('common.readOnlyNotice')}</Text>
+      ) : (
+        <>
+          <Button
+            color={goalRed}
+            title={t('lineup.resetButton')}
+            onPress={resetCurrentView}
+          />
+          <Button
+            color={goalRed}
+            disabled={isSaving}
+            title={isSaving ? t('lineup.saving') : t('lineup.saveButton')}
+            onPress={() => void handleSave()}
+          />
+        </>
+      )}
     </AppScreen>
   );
 }
@@ -687,16 +704,19 @@ function PlayerChip({
   player,
   isSelected,
   jerseyColors,
+  disabled = false,
   onPress,
 }: {
   player: Player;
   isSelected: boolean;
   jerseyColors: JerseyColors;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
       style={[
         styles.playerChip,
@@ -786,6 +806,7 @@ function SlotView({
   slotKey,
   playerId,
   playerById,
+  isReadOnly,
   removeSlotKey,
   setRemoveSlotKey,
   jerseyColors,
@@ -796,6 +817,7 @@ function SlotView({
   slotKey: string;
   playerId: string | null;
   playerById: Map<string, Player>;
+  isReadOnly: boolean;
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   jerseyColors: JerseyColors;
@@ -811,6 +833,7 @@ function SlotView({
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={isReadOnly}
       onPress={() => {
         if (player) {
           setRemoveSlotKey(removeSlotKey === slotKey ? null : slotKey);
@@ -834,7 +857,7 @@ function SlotView({
           ? `${player.first_name} ${player.last_name}`
           : label || t('lineup.emptySlot')}
       </Text>
-      {player && removeSlotKey === slotKey ? (
+      {!isReadOnly && player && removeSlotKey === slotKey ? (
         <Button
           color={goalRed}
           title={t('lineup.removeSlotButton')}
@@ -847,10 +870,12 @@ function SlotView({
 
 function GoalieSection({
   goalies,
+  isReadOnly,
   playerById,
   onSetStarter,
 }: {
   goalies: GoalieAssignment[];
+  isReadOnly: boolean;
   playerById: Map<string, Player>;
   onSetStarter: (playerId: string) => void;
 }) {
@@ -874,6 +899,7 @@ function GoalieSection({
         return (
           <Pressable
             accessibilityRole="button"
+            disabled={isReadOnly}
             key={goalie.player_id}
             onPress={() => onSetStarter(goalie.player_id)}
             style={[styles.goalieRow, goalie.is_starter && styles.starterRow]}
@@ -885,7 +911,9 @@ function GoalieSection({
             <Text style={styles.starterText}>
               {goalie.is_starter
                 ? t('lineup.starterGoalie')
-                : t('lineup.markStarter')}
+                : isReadOnly
+                  ? ''
+                  : t('lineup.markStarter')}
             </Text>
           </Pressable>
         );
@@ -899,6 +927,7 @@ function renderForwardLineSection({
   lines,
   showFourthForwardLine,
   playerById,
+  isReadOnly,
   removeSlotKey,
   setRemoveSlotKey,
   assignSelectedPlayer,
@@ -911,6 +940,7 @@ function renderForwardLineSection({
   lines: ForwardLine[];
   showFourthForwardLine: boolean;
   playerById: Map<string, Player>;
+  isReadOnly: boolean;
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   assignSelectedPlayer: (assign: (playerId: string) => void) => void;
@@ -937,6 +967,7 @@ function renderForwardLineSection({
           <View style={styles.slotGrid}>
             <SlotView
               label={t('lineup.slots.leftWing')}
+              isReadOnly={isReadOnly}
               playerById={playerById}
               playerId={line.left_wing_player_id}
               removeSlotKey={removeSlotKey}
@@ -958,6 +989,7 @@ function renderForwardLineSection({
             />
             <SlotView
               label={t('lineup.slots.center')}
+              isReadOnly={isReadOnly}
               playerById={playerById}
               playerId={line.center_player_id}
               removeSlotKey={removeSlotKey}
@@ -975,6 +1007,7 @@ function renderForwardLineSection({
             />
             <SlotView
               label={t('lineup.slots.rightWing')}
+              isReadOnly={isReadOnly}
               playerById={playerById}
               playerId={line.right_wing_player_id}
               removeSlotKey={removeSlotKey}
@@ -997,15 +1030,17 @@ function renderForwardLineSection({
           </View>
         </View>
       ))}
-      <Button
-        color={goalRed}
-        title={
-          showFourthForwardLine
-            ? t('lineup.removeFourthLineButton')
-            : t('lineup.addFourthLineButton')
-        }
-        onPress={toggleFourthLine}
-      />
+      {isReadOnly ? null : (
+        <Button
+          color={goalRed}
+          title={
+            showFourthForwardLine
+              ? t('lineup.removeFourthLineButton')
+              : t('lineup.addFourthLineButton')
+          }
+          onPress={toggleFourthLine}
+        />
+      )}
     </View>
   );
 }
@@ -1015,6 +1050,7 @@ function SpecialTeamsUnitsSection({
   lines,
   pairs,
   playerById,
+  isReadOnly,
   removeSlotKey,
   setRemoveSlotKey,
   assignSelectedPlayer,
@@ -1027,6 +1063,7 @@ function SpecialTeamsUnitsSection({
   lines: ForwardLine[];
   pairs: DefensePair[];
   playerById: Map<string, Player>;
+  isReadOnly: boolean;
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   assignSelectedPlayer: (assign: (playerId: string) => void) => void;
@@ -1068,6 +1105,7 @@ function SpecialTeamsUnitsSection({
                     ? t('lineup.slots.forwardOne')
                     : t('lineup.slots.leftWing')
                 }
+                isReadOnly={isReadOnly}
                 playerById={playerById}
                 playerId={line.left_wing_player_id}
                 removeSlotKey={removeSlotKey}
@@ -1090,6 +1128,7 @@ function SpecialTeamsUnitsSection({
               {isPenaltyKill ? null : (
                 <SlotView
                   label={t('lineup.slots.center')}
+                  isReadOnly={isReadOnly}
                   playerById={playerById}
                   playerId={line.center_player_id}
                   removeSlotKey={removeSlotKey}
@@ -1116,6 +1155,7 @@ function SpecialTeamsUnitsSection({
                     ? t('lineup.slots.forwardTwo')
                     : t('lineup.slots.rightWing')
                 }
+                isReadOnly={isReadOnly}
                 playerById={playerById}
                 playerId={line.right_wing_player_id}
                 removeSlotKey={removeSlotKey}
@@ -1139,6 +1179,7 @@ function SpecialTeamsUnitsSection({
             <View style={styles.slotGrid}>
               <SlotView
                 label={t('lineup.slots.leftDefense')}
+                isReadOnly={isReadOnly}
                 playerById={playerById}
                 playerId={pair?.left_d_player_id ?? null}
                 removeSlotKey={removeSlotKey}
@@ -1160,6 +1201,7 @@ function SpecialTeamsUnitsSection({
               />
               <SlotView
                 label={t('lineup.slots.rightDefense')}
+                isReadOnly={isReadOnly}
                 playerById={playerById}
                 playerId={pair?.right_d_player_id ?? null}
                 removeSlotKey={removeSlotKey}
@@ -1191,6 +1233,7 @@ function renderDefensePairSection({
   title,
   pairs,
   playerById,
+  isReadOnly,
   removeSlotKey,
   setRemoveSlotKey,
   assignSelectedPlayer,
@@ -1201,6 +1244,7 @@ function renderDefensePairSection({
   title: string;
   pairs: DefensePair[];
   playerById: Map<string, Player>;
+  isReadOnly: boolean;
   removeSlotKey: string | null;
   setRemoveSlotKey: (slotKey: string | null) => void;
   assignSelectedPlayer: (assign: (playerId: string) => void) => void;
@@ -1223,6 +1267,7 @@ function renderDefensePairSection({
           <View style={styles.slotGrid}>
             <SlotView
               label={t('lineup.slots.leftDefense')}
+              isReadOnly={isReadOnly}
               playerById={playerById}
               playerId={pair.left_d_player_id}
               removeSlotKey={removeSlotKey}
@@ -1240,6 +1285,7 @@ function renderDefensePairSection({
             />
             <SlotView
               label={t('lineup.slots.rightDefense')}
+              isReadOnly={isReadOnly}
               playerById={playerById}
               playerId={pair.right_d_player_id}
               removeSlotKey={removeSlotKey}

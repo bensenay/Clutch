@@ -11,12 +11,15 @@ export type AuthStackParamList = {
 export type AuthenticatedStackParamList = {
   MainTabs: NavigatorScreenParams<AuthenticatedTabParamList> | undefined;
   Settings: undefined;
-  PlayerForm: { playerId?: string } | undefined;
-  GameForm: { gameId?: string } | undefined;
-  LineupBuilder: { gameId: string };
-  PracticePlanDetail: { practicePlanId: string };
+  PlayerForm: { playerId?: string; readOnly?: boolean } | undefined;
+  GameForm: { gameId?: string; readOnly?: boolean } | undefined;
+  LineupBuilder: { gameId: string; readOnly?: boolean };
+  PracticePlanDetail:
+    | { practicePlanId?: string; readOnly?: boolean }
+    | undefined;
   DirectorAllTeams: undefined;
   DirectorSettings: undefined;
+  DirectorAssistantCoaches: undefined;
 };
 
 export type AuthenticatedTabParamList = {

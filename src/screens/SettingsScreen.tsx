@@ -57,7 +57,7 @@ const DEFAULT_SECONDARY_COLOR = rinkNavy;
 const DEFAULT_TERTIARY_COLOR = iceWhite;
 const TEAM_LOGOS_BUCKET = 'team-logos';
 
-export function SettingsScreen(_props: Props) {
+export function SettingsScreen({ navigation }: Props) {
   const { i18n, t } = useTranslation();
   const { signOut } = useAuth();
   const { setActiveTeam } = useActiveTeam();
@@ -78,6 +78,7 @@ export function SettingsScreen(_props: Props) {
       title={t('settings.title')}
     >
       <DirectorOrganizationSettingsSection />
+      <DirectorAssistantCoachesSettingsLink navigation={navigation} />
       <TeamBrandingSection />
       <View style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
@@ -100,6 +101,56 @@ export function SettingsScreen(_props: Props) {
         onPress={() => void handleSignOut()}
       />
     </AppScreen>
+  );
+}
+
+function DirectorAssistantCoachesSettingsLink({
+  navigation,
+}: {
+  navigation: Props['navigation'];
+}) {
+  const { t } = useTranslation();
+  const { session } = useAuth();
+  const profileQuery = useQuery({
+    queryKey: ['profile', session?.user.id],
+    queryFn: async () => {
+      if (!session) {
+        throw new Error(t('home.noSessionError'));
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data as { role: 'super_admin' | 'director' | 'coach' };
+    },
+    enabled: Boolean(session),
+  });
+
+  if (profileQuery.data?.role !== 'director') {
+    return null;
+  }
+
+  return (
+    <View style={appScreenStyles.card}>
+      <Text style={appScreenStyles.cardTitle}>
+        {t('settings.assistantCoachesTitle')}
+      </Text>
+      <Text style={appScreenStyles.cardDescription}>
+        {t('settings.assistantCoachesDescription')}
+      </Text>
+      <Button
+        color={goalRed}
+        title={t('settings.assistantCoachesButton')}
+        onPress={() => navigation.navigate('DirectorAssistantCoaches')}
+      />
+    </View>
   );
 }
 

@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -17,9 +18,23 @@ export type ActiveTeam = {
   logo_url: string | null;
 };
 
+export type ActiveTeamAccess =
+  | { mode: 'membership' }
+  | {
+      mode: 'assignment';
+      assignmentId: string;
+      assignmentType: 'game' | 'practice';
+      scheduledAt: string;
+    };
+
 type ActiveTeamContextValue = {
   activeTeam: ActiveTeam | null;
-  setActiveTeam: (team: ActiveTeam | null) => void;
+  activeTeamAccess: ActiveTeamAccess;
+  isReadOnlyTeam: boolean;
+  setActiveTeam: (
+    team: ActiveTeam | null,
+    access?: ActiveTeamAccess,
+  ) => void;
 };
 
 const ActiveTeamContext = createContext<ActiveTeamContextValue | undefined>(
@@ -28,12 +43,24 @@ const ActiveTeamContext = createContext<ActiveTeamContextValue | undefined>(
 
 export function ActiveTeamProvider({ children }: PropsWithChildren) {
   const [activeTeam, setActiveTeam] = useState<ActiveTeam | null>(null);
+  const [activeTeamAccess, setActiveTeamAccess] = useState<ActiveTeamAccess>({
+    mode: 'membership',
+  });
+  const setActiveTeamWithAccess = useCallback(
+    (team: ActiveTeam | null, access?: ActiveTeamAccess) => {
+      setActiveTeam(team);
+      setActiveTeamAccess(team ? access ?? { mode: 'membership' } : { mode: 'membership' });
+    },
+    [],
+  );
   const value = useMemo(
     () => ({
       activeTeam,
-      setActiveTeam,
+      activeTeamAccess,
+      isReadOnlyTeam: activeTeamAccess.mode === 'assignment',
+      setActiveTeam: setActiveTeamWithAccess,
     }),
-    [activeTeam],
+    [activeTeam, activeTeamAccess, setActiveTeamWithAccess],
   );
 
   return (

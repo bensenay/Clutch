@@ -50,9 +50,10 @@ const STATUSES: PlayerStatus[] = ['active', 'injured', 'suspended'];
 export function PlayerFormScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { activeTeam } = useActiveTeam();
+  const { activeTeam, isReadOnlyTeam } = useActiveTeam();
   const playerId = route.params?.playerId;
   const isEditing = Boolean(playerId);
+  const isReadOnly = isReadOnlyTeam || Boolean(route.params?.readOnly);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [jerseyNumber, setJerseyNumber] = useState('');
@@ -267,7 +268,13 @@ export function PlayerFormScreen({ navigation, route }: Props) {
       description={t('playerForm.description', {
         teamName: activeTeam.name,
       })}
-      title={isEditing ? t('playerForm.editTitle') : t('playerForm.addTitle')}
+      title={
+        isReadOnly
+          ? t('playerForm.readOnlyTitle')
+          : isEditing
+            ? t('playerForm.editTitle')
+            : t('playerForm.addTitle')
+      }
     >
       {playerQuery.isLoading ? (
         <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
@@ -281,6 +288,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.firstNameLabel')}
           onChangeText={setFirstName}
           placeholder={t('playerForm.firstNamePlaceholder')}
+          editable={!isReadOnly}
           value={firstName}
         />
         <FormField
@@ -288,6 +296,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.lastNameLabel')}
           onChangeText={setLastName}
           placeholder={t('playerForm.lastNamePlaceholder')}
+          editable={!isReadOnly}
           value={lastName}
         />
         <FormField
@@ -295,9 +304,11 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.jerseyNumberLabel')}
           onChangeText={setJerseyNumber}
           placeholder={t('playerForm.jerseyNumberPlaceholder')}
+          editable={!isReadOnly}
           value={jerseyNumber}
         />
         <Selector
+          disabled={isReadOnly}
           label={t('playerForm.naturalPositionLabel')}
           options={POSITIONS}
           renderLabel={(option) => t(`playerForm.positions.${option}`)}
@@ -309,6 +320,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.heightLabel')}
           onChangeText={setHeight}
           placeholder={t('playerForm.heightPlaceholder')}
+          editable={!isReadOnly}
           value={height}
         />
         <FormField
@@ -316,9 +328,11 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.weightLabel')}
           onChangeText={setWeight}
           placeholder={t('playerForm.weightPlaceholder')}
+          editable={!isReadOnly}
           value={weight}
         />
         <Selector
+          disabled={isReadOnly}
           label={t('playerForm.statusLabel')}
           options={STATUSES}
           renderLabel={(option) => t(`playerForm.statuses.${option}`)}
@@ -331,6 +345,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           onChangeText={setStatusNote}
           placeholder={t('playerForm.statusNotePlaceholder')}
           style={styles.multiline}
+          editable={!isReadOnly}
           value={statusNote}
         />
         <FormField
@@ -338,6 +353,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.parentNameLabel')}
           onChangeText={setParentName}
           placeholder={t('playerForm.parentNamePlaceholder')}
+          editable={!isReadOnly}
           value={parentName}
         />
         <FormField
@@ -345,6 +361,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.parentPhoneLabel')}
           onChangeText={setParentPhone}
           placeholder={t('playerForm.parentPhonePlaceholder')}
+          editable={!isReadOnly}
           value={parentPhone}
         />
         <FormField
@@ -352,6 +369,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.emergencyContactNameLabel')}
           onChangeText={setEmergencyContactName}
           placeholder={t('playerForm.emergencyContactNamePlaceholder')}
+          editable={!isReadOnly}
           value={emergencyContactName}
         />
         <FormField
@@ -359,6 +377,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           label={t('playerForm.emergencyContactPhoneLabel')}
           onChangeText={setEmergencyContactPhone}
           placeholder={t('playerForm.emergencyContactPhonePlaceholder')}
+          editable={!isReadOnly}
           value={emergencyContactPhone}
         />
         <FormField
@@ -367,20 +386,25 @@ export function PlayerFormScreen({ navigation, route }: Props) {
           onChangeText={setMedicalNotes}
           placeholder={t('playerForm.medicalNotesPlaceholder')}
           style={styles.multiline}
+          editable={!isReadOnly}
           value={medicalNotes}
         />
         {error ? <Text style={authStyles.error}>{error}</Text> : null}
-        <Button
-          color={goalRed}
-          disabled={isSubmitting || playerQuery.isLoading}
-          title={
-            isSubmitting
-              ? t('playerForm.saving')
-              : t('playerForm.saveButton')
-          }
-          onPress={() => void handleSave()}
-        />
-        {isEditing ? (
+        {isReadOnly ? (
+          <Text style={appScreenStyles.note}>{t('common.readOnlyNotice')}</Text>
+        ) : (
+          <Button
+            color={goalRed}
+            disabled={isSubmitting || playerQuery.isLoading}
+            title={
+              isSubmitting
+                ? t('playerForm.saving')
+                : t('playerForm.saveButton')
+            }
+            onPress={() => void handleSave()}
+          />
+        )}
+        {isEditing && !isReadOnly ? (
           <Button
             color={goalRed}
             disabled={isSubmitting}
@@ -394,6 +418,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
 }
 
 type SelectorProps<T extends string> = {
+  disabled?: boolean;
   label: string;
   options: T[];
   value: T | null;
@@ -402,6 +427,7 @@ type SelectorProps<T extends string> = {
 };
 
 function Selector<T extends string>({
+  disabled = false,
   label,
   options,
   value,
@@ -418,6 +444,7 @@ function Selector<T extends string>({
           return (
             <Pressable
               accessibilityRole="button"
+              disabled={disabled}
               key={option}
               onPress={() => onChange(option)}
               style={[styles.selectorOption, isSelected && styles.selected]}
