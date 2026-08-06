@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Pressable,
@@ -16,6 +16,7 @@ import { Calendar } from 'react-native-calendars';
 import type { MarkedDates } from 'react-native-calendars/src/types';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import type {
   AuthenticatedStackParamList,
@@ -38,6 +39,42 @@ type Props = CompositeScreenProps<
 type ScheduleView = 'list' | 'week' | 'month';
 type ScheduleFilter = 'all' | 'games' | 'practices';
 type ScheduleEventType = 'home_game' | 'away_game' | 'practice';
+type TeamFilterValue = 'all' | string;
+type MembershipRole = 'head_coach' | 'assistant_coach';
+
+type Profile = {
+  role: 'super_admin' | 'director' | 'coach';
+  school_id: string | null;
+};
+
+type CalendarTeam = {
+  id: string;
+  name: string;
+  level: string | null;
+  season: string | null;
+  membership_role?: MembershipRole | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  tertiary_color: string | null;
+  logo_url: string | null;
+  access: 'full' | 'assignment';
+};
+
+type TeamRelation = CalendarTeam | CalendarTeam[] | null;
+
+type MembershipRow = {
+  team_id: string;
+  membership_role: MembershipRole;
+  teams: TeamRelation;
+};
+
+type AssignmentRow = {
+  id: string;
+  team_id: string;
+  assignment_type: 'game' | 'practice';
+  scheduled_at: string;
+  teams: TeamRelation;
+};
 
 export type Game = {
   id: string;
@@ -69,9 +106,14 @@ type ScheduleEvent = {
   dateKey: string;
   color: string;
   label: string;
+  detailLabel: string;
+  teamId: string;
+  teamName: string;
+  isReadOnly: boolean;
   sortTime: number;
 };
 
+const ALL_TEAMS_FILTER = 'all';
 const VIEW_OPTIONS: ScheduleView[] = ['list', 'week', 'month'];
 const FILTER_OPTIONS: ScheduleFilter[] = ['all', 'games', 'practices'];
 const NEUTRAL_EVENT_COLOR = slateGrey;
@@ -99,9 +141,12 @@ function sortGames(games: Game[]) {
 
 export function GameListScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { activeTeam, isReadOnlyTeam } = useActiveTeam();
+  const { session } = useAuth();
+  const { activeTeam } = useActiveTeam();
   const [activeView, setActiveView] = useState<ScheduleView>('list');
   const [activeFilter, setActiveFilter] = useState<ScheduleFilter>('all');
+  const [teamFilter, setTeamFilter] =
+    useState<TeamFilterValue>(ALL_TEAMS_FILTER);
   const [selectedDateKey, setSelectedDateKey] = useState(() =>
     toDateKey(new Date()),
   );
@@ -109,11 +154,186 @@ export function GameListScreen({ navigation }: Props) {
   const [exportError, setExportError] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
-  const gamesQuery = useQuery({
-    queryKey: ['games', activeTeam?.id],
+  const profileQuery = useQuery({
+    queryKey: ['profile', session?.user.id],
     queryFn: async () => {
-      if (!activeTeam) {
-        throw new Error(t('games.noActiveTeamTitle'));
+      if (!session) {
+        throw new Error(t('home.noSessionError'));
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role, school_id')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data as Profile;
+    },
+    enabled: Boolean(session),
+  });
+  const profile = profileQuery.data;
+  const directorTeamsQuery = useQuery({
+    queryKey: ['calendar-director-teams', profile?.school_id],
+    queryFn: async () => {
+      if (!profile?.school_id) {
+        throw new Error(t('directorAllTeams.noSchoolError'));
+      }
+
+      const { data, error } = await supabase
+        .from('teams')
+        .select(
+          'id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url',
+        )
+        .eq('school_id', profile.school_id)
+        .order('name', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      return ((data ?? []) as CalendarTeam[]).map((team) => ({
+        ...team,
+        access: 'full' as const,
+      }));
+    },
+    enabled: profile?.role === 'director' && Boolean(profile.school_id),
+  });
+  const coachMembershipsQuery = useQuery({
+    queryKey: ['calendar-coach-memberships', session?.user.id],
+    queryFn: async () => {
+      if (!session) {
+        throw new Error(t('home.noSessionError'));
+      }
+
+      const { data, error } = await supabase
+        .from('team_memberships')
+        .select(
+          'team_id, membership_role, teams ( id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url )',
+        )
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      const membershipTeams: CalendarTeam[] = [];
+
+      for (const membership of (data ?? []) as MembershipRow[]) {
+        const team = normalizeTeamRelation(membership.teams);
+
+        if (team) {
+          membershipTeams.push({
+            ...team,
+            access:
+              membership.membership_role === 'head_coach'
+                ? ('full' as const)
+                : ('assignment' as const),
+            membership_role: membership.membership_role,
+          });
+        }
+      }
+
+      return membershipTeams;
+    },
+    enabled: profile?.role === 'coach' && Boolean(session),
+  });
+  const coachAssignmentsQuery = useQuery({
+    queryKey: ['calendar-coach-assignments', session?.user.id],
+    queryFn: async () => {
+      if (!session) {
+        throw new Error(t('home.noSessionError'));
+      }
+
+      const { data, error } = await supabase
+        .from('coach_assignments')
+        .select(
+          'id, team_id, assignment_type, scheduled_at, teams ( id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url )',
+        )
+        .eq('assistant_coach_user_id', session.user.id)
+        .order('scheduled_at', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []) as AssignmentRow[];
+    },
+    enabled: profile?.role === 'coach' && Boolean(session),
+  });
+  const calendarTeams = useMemo(() => {
+    if (profile?.role === 'director') {
+      return directorTeamsQuery.data ?? [];
+    }
+
+    const assignmentTeams: CalendarTeam[] = [];
+
+    for (const assignment of coachAssignmentsQuery.data ?? []) {
+      const team = normalizeTeamRelation(assignment.teams);
+
+      if (team) {
+        assignmentTeams.push({
+          ...team,
+          access: 'assignment',
+        });
+      }
+    }
+
+    return mergeCalendarTeams([
+      ...(coachMembershipsQuery.data ?? []),
+      ...assignmentTeams,
+    ]);
+  }, [
+    coachAssignmentsQuery.data,
+    coachMembershipsQuery.data,
+    directorTeamsQuery.data,
+    profile?.role,
+  ]);
+  const calendarTeamIdsKey = calendarTeams.map((team) => team.id).join(',');
+
+  useEffect(() => {
+    if (calendarTeams.length === 0) {
+      return;
+    }
+
+    const defaultFilter =
+      calendarTeams.length > 1
+        ? ALL_TEAMS_FILTER
+        : calendarTeams[0]?.id ?? ALL_TEAMS_FILTER;
+
+    setTeamFilter((currentFilter) => {
+      if (
+        currentFilter === ALL_TEAMS_FILTER &&
+        calendarTeams.length > 1
+      ) {
+        return currentFilter;
+      }
+
+      if (calendarTeams.some((team) => team.id === currentFilter)) {
+        return currentFilter;
+      }
+
+      return defaultFilter;
+    });
+  }, [calendarTeamIdsKey, calendarTeams]);
+
+  const selectedTeamIds = useMemo(
+    () =>
+      teamFilter === ALL_TEAMS_FILTER
+        ? calendarTeams.map((team) => team.id)
+        : [teamFilter],
+    [calendarTeams, teamFilter],
+  );
+  const selectedTeamIdsKey = selectedTeamIds.join(',');
+  const gamesQuery = useQuery({
+    queryKey: ['calendar-games', selectedTeamIdsKey],
+    queryFn: async () => {
+      if (selectedTeamIds.length === 0) {
+        return [] as Game[];
       }
 
       const { data, error } = await supabase
@@ -121,7 +341,7 @@ export function GameListScreen({ navigation }: Props) {
         .select(
           'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
         )
-        .eq('team_id', activeTeam.id)
+        .in('team_id', selectedTeamIds)
         .order('game_date', { ascending: true });
 
       if (error) {
@@ -130,19 +350,19 @@ export function GameListScreen({ navigation }: Props) {
 
       return sortGames((data ?? []) as Game[]);
     },
-    enabled: Boolean(activeTeam),
+    enabled: selectedTeamIds.length > 0,
   });
   const practicesQuery = useQuery({
-    queryKey: ['practice-plans', activeTeam?.id],
+    queryKey: ['calendar-practice-plans', selectedTeamIdsKey],
     queryFn: async () => {
-      if (!activeTeam) {
-        throw new Error(t('games.noActiveTeamTitle'));
+      if (selectedTeamIds.length === 0) {
+        return [] as PracticePlan[];
       }
 
       const { data, error } = await supabase
         .from('practice_plans')
         .select('id, team_id, practice_date, segments, created_at, updated_at')
-        .eq('team_id', activeTeam.id)
+        .in('team_id', selectedTeamIds)
         .order('practice_date', { ascending: true });
 
       if (error) {
@@ -151,25 +371,26 @@ export function GameListScreen({ navigation }: Props) {
 
       return (data ?? []) as PracticePlan[];
     },
-    enabled: Boolean(activeTeam),
+    enabled: selectedTeamIds.length > 0,
   });
 
   const games = gamesQuery.data ?? [];
   const practices = practicesQuery.data ?? [];
-  const eventColors = {
-    home: activeTeam?.primary_color ?? goalRed,
-    away: activeTeam?.secondary_color ?? rinkNavy,
-    practice: activeTeam?.tertiary_color ?? NEUTRAL_EVENT_COLOR,
-  };
+  const teamById = useMemo(
+    () => new Map(calendarTeams.map((team) => [team.id, team])),
+    [calendarTeams],
+  );
+  const isAllTeamsSelected = teamFilter === ALL_TEAMS_FILTER;
   const allEvents = useMemo(
     () =>
       makeScheduleEvents({
-        eventColors,
         games,
+        isAllTeamsSelected,
         practices,
         t,
+        teamById,
       }),
-    [eventColors.away, eventColors.home, eventColors.practice, games, practices, t],
+    [games, isAllTeamsSelected, practices, t, teamById],
   );
   const filteredEvents = useMemo(
     () => filterEvents(allEvents, activeFilter),
@@ -177,10 +398,6 @@ export function GameListScreen({ navigation }: Props) {
   );
   const selectedDateEvents = filteredEvents.filter(
     (event) => event.dateKey === selectedDateKey,
-  );
-  const eventsByDate = useMemo(
-    () => groupEventsByDate(filteredEvents),
-    [filteredEvents],
   );
   const weekDays = getWeekDays(new Date(`${selectedDateKey}T12:00:00`));
   const weekEvents = filteredEvents.filter((event) =>
@@ -195,14 +412,14 @@ export function GameListScreen({ navigation }: Props) {
     if (event.type === 'practice') {
       navigation.navigate('PracticePlanDetail', {
         practicePlanId: event.id,
-        readOnly: isReadOnlyTeam,
+        readOnly: event.isReadOnly,
       });
       return;
     }
 
     navigation.navigate('GameForm', {
       gameId: event.id,
-      readOnly: isReadOnlyTeam,
+      readOnly: event.isReadOnly,
     });
   }
 
@@ -246,7 +463,31 @@ export function GameListScreen({ navigation }: Props) {
     }
   }
 
-  if (!activeTeam) {
+  const isLoadingCalendarAccess =
+    profileQuery.isLoading ||
+    directorTeamsQuery.isLoading ||
+    coachMembershipsQuery.isLoading ||
+    coachAssignmentsQuery.isLoading;
+  const hasCalendarAccessError =
+    Boolean(profileQuery.error) ||
+    Boolean(directorTeamsQuery.error) ||
+    Boolean(coachMembershipsQuery.error) ||
+    Boolean(coachAssignmentsQuery.error);
+  const selectedTeam = teamById.get(
+    teamFilter === ALL_TEAMS_FILTER ? '' : teamFilter,
+  );
+  const selectedTeamName =
+    teamFilter === ALL_TEAMS_FILTER
+      ? t('calendar.allTeams')
+      : selectedTeam?.name ?? activeTeam?.name ?? t('calendar.selectedTeamFallback');
+  const canAddGame =
+    activeView === 'list' &&
+    activeTeam &&
+    teamFilter !== ALL_TEAMS_FILTER &&
+    activeTeam.id === teamFilter &&
+    selectedTeam?.access === 'full';
+
+  if (!isLoadingCalendarAccess && calendarTeams.length === 0) {
     return (
       <AppScreen
         description={t('games.noActiveTeamDescription')}
@@ -260,13 +501,13 @@ export function GameListScreen({ navigation }: Props) {
       action={
         <View style={styles.headerActions}>
           {activeView === 'list' ? (
-            isReadOnlyTeam ? null : (
+            canAddGame ? (
               <Button
                 color={goalRed}
                 title={t('games.addGameButton')}
                 onPress={() => navigation.navigate('GameForm')}
               />
-            )
+            ) : null
           ) : (
             <Button
               color={goalRed}
@@ -281,7 +522,7 @@ export function GameListScreen({ navigation }: Props) {
           )}
         </View>
       }
-      description={t('games.description', { teamName: activeTeam.name })}
+      description={t('games.description', { teamName: selectedTeamName })}
       title={t('games.title')}
     >
       <SegmentedControl
@@ -290,6 +531,13 @@ export function GameListScreen({ navigation }: Props) {
         value={activeView}
         onChange={setActiveView}
       />
+      {calendarTeams.length > 1 ? (
+        <TeamFilterControl
+          options={calendarTeams}
+          value={teamFilter}
+          onChange={setTeamFilter}
+        />
+      ) : null}
       {activeView !== 'list' ? (
         <SegmentedControl
           options={FILTER_OPTIONS}
@@ -298,10 +546,12 @@ export function GameListScreen({ navigation }: Props) {
           onChange={setActiveFilter}
         />
       ) : null}
-      {gamesQuery.isLoading || practicesQuery.isLoading ? (
+      {isLoadingCalendarAccess ||
+      gamesQuery.isLoading ||
+      practicesQuery.isLoading ? (
         <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
       ) : null}
-      {gamesQuery.error || practicesQuery.error ? (
+      {hasCalendarAccessError || gamesQuery.error || practicesQuery.error ? (
         <Text style={appScreenStyles.error}>{t('games.loadError')}</Text>
       ) : null}
       {exportError ? (
@@ -309,29 +559,24 @@ export function GameListScreen({ navigation }: Props) {
       ) : null}
       {activeView === 'list' ? (
         <GameScheduleList
-          games={games}
+          events={filterEvents(allEvents, 'games')}
           isLoading={gamesQuery.isLoading}
-          isReadOnly={isReadOnlyTeam}
-          navigateToGame={(gameId) =>
-            navigation.navigate('GameForm', {
-              gameId,
-              readOnly: isReadOnlyTeam,
-            })
-          }
-          navigateToLineup={(gameId) =>
+          navigateToGame={navigateToEvent}
+          navigateToLineup={(event) =>
             navigation.navigate('LineupBuilder', {
-              gameId,
-              readOnly: isReadOnlyTeam,
+              gameId: event.id,
+              readOnly: event.isReadOnly,
             })
           }
           navigateToNewGame={() => navigation.navigate('GameForm')}
+          showTeamName={teamFilter === ALL_TEAMS_FILTER}
+          canAddGame={Boolean(canAddGame)}
         />
       ) : null}
       {activeView === 'month' ? (
         <MonthScheduleView
           events={selectedDateEvents}
           markedDates={markedDates}
-          eventsByDate={eventsByDate}
           selectedDateKey={selectedDateKey}
           onMonthChange={(dateString) => {
             setSelectedDateKey(dateString);
@@ -344,6 +589,7 @@ export function GameListScreen({ navigation }: Props) {
       {activeView === 'week' ? (
         <WeekScheduleView
           events={filteredEvents}
+          selectedDateEvents={selectedDateEvents}
           selectedDateKey={selectedDateKey}
           weekDays={weekDays}
           onOpenEvent={navigateToEvent}
@@ -355,25 +601,27 @@ export function GameListScreen({ navigation }: Props) {
 }
 
 function GameScheduleList({
-  games,
+  canAddGame,
+  events,
   isLoading,
-  isReadOnly,
   navigateToGame,
   navigateToLineup,
   navigateToNewGame,
+  showTeamName,
 }: {
-  games: Game[];
+  canAddGame: boolean;
+  events: ScheduleEvent[];
   isLoading: boolean;
-  isReadOnly: boolean;
-  navigateToGame: (gameId: string) => void;
-  navigateToLineup: (gameId: string) => void;
+  navigateToGame: (event: ScheduleEvent) => void;
+  navigateToLineup: (event: ScheduleEvent) => void;
   navigateToNewGame: () => void;
+  showTeamName: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
-      {!isLoading && games.length === 0 ? (
+      {!isLoading && events.length === 0 ? (
         <View style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>
             {t('games.emptyTitle')}
@@ -381,40 +629,39 @@ function GameScheduleList({
           <Text style={appScreenStyles.cardDescription}>
             {t('games.emptyDescription')}
           </Text>
-          {isReadOnly ? null : (
+          {canAddGame ? (
             <Button
               color={goalRed}
               title={t('games.addFirstGameButton')}
               onPress={navigateToNewGame}
             />
-          )}
+          ) : null}
         </View>
       ) : null}
       <View style={appScreenStyles.list}>
-        {games.map((game) => (
-          <View key={game.id} style={appScreenStyles.card}>
+        {events.map((event) => (
+          <View key={`${event.type}-${event.id}`} style={appScreenStyles.card}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => navigateToGame(game.id)}
+              onPress={() => navigateToGame(event)}
               style={({ pressed }) => pressed && styles.pressed}
             >
               <View style={appScreenStyles.row}>
                 <View style={styles.details}>
                   <Text style={appScreenStyles.cardTitle}>
-                    {t('games.opponentTitle', {
-                      opponentName: game.opponent_name,
-                    })}
+                    {event.label}
                   </Text>
-                  <Text style={appScreenStyles.meta}>
-                    {formatGameDate(game.game_date)}
-                  </Text>
-                  {game.location ? (
-                    <Text style={appScreenStyles.meta}>{game.location}</Text>
+                  {showTeamName ? (
+                    <Text style={appScreenStyles.meta}>{event.teamName}</Text>
                   ) : null}
+                  <Text style={appScreenStyles.meta}>
+                    {formatDateOnly(event.dateKey)}
+                  </Text>
+                  <Text style={appScreenStyles.meta}>{event.detailLabel}</Text>
                 </View>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
-                    {game.is_home
+                    {event.type === 'home_game'
                       ? t('games.homeBadge')
                       : t('games.awayBadge')}
                   </Text>
@@ -424,11 +671,11 @@ function GameScheduleList({
             <Button
               color={goalRed}
               title={
-                isReadOnly
+                event.isReadOnly
                   ? t('gameForm.viewLineupButton')
                   : t('gameForm.lineupButton')
               }
-              onPress={() => navigateToLineup(game.id)}
+              onPress={() => navigateToLineup(event)}
             />
           </View>
         ))}
@@ -440,7 +687,6 @@ function GameScheduleList({
 function MonthScheduleView({
   events,
   markedDates,
-  eventsByDate,
   selectedDateKey,
   onMonthChange,
   onOpenEvent,
@@ -448,7 +694,6 @@ function MonthScheduleView({
 }: {
   events: ScheduleEvent[];
   markedDates: MarkedDates;
-  eventsByDate: Map<string, ScheduleEvent[]>;
   selectedDateKey: string;
   onMonthChange: (dateString: string) => void;
   onOpenEvent: (event: ScheduleEvent) => void;
@@ -460,54 +705,7 @@ function MonthScheduleView({
     <View style={styles.calendarStack}>
       <View style={styles.calendarCard}>
         <Calendar
-          dayComponent={({ date, state }) => {
-            const dateString = date?.dateString ?? '';
-            const dayEvents = eventsByDate.get(dateString) ?? [];
-            const primaryEvent = dayEvents[0];
-            const isSelected = dateString === selectedDateKey;
-            const isDisabled = state === 'disabled';
-
-            return (
-              <Pressable
-                accessibilityRole="button"
-                disabled={!dateString}
-                onPress={() => onSelectDate(dateString)}
-                style={[
-                  styles.monthDayBox,
-                  primaryEvent && {
-                    backgroundColor: primaryEvent.color,
-                    borderColor: primaryEvent.color,
-                  },
-                  isSelected && styles.monthDayBoxSelected,
-                  isDisabled && styles.monthDayBoxDisabled,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.monthDayText,
-                    primaryEvent && {
-                      color: getReadableTextColor(primaryEvent.color),
-                    },
-                    isDisabled && styles.monthDayTextDisabled,
-                  ]}
-                >
-                  {date?.day}
-                </Text>
-                {dayEvents.length > 1 ? (
-                  <Text
-                    style={[
-                      styles.monthDayCount,
-                      primaryEvent && {
-                        color: getReadableTextColor(primaryEvent.color),
-                      },
-                    ]}
-                  >
-                    {dayEvents.length}
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          }}
+          markingType="multi-dot"
           markedDates={markedDates}
           onDayPress={(day) => onSelectDate(day.dateString)}
           onMonthChange={(month) => onMonthChange(month.dateString)}
@@ -531,12 +729,14 @@ function MonthScheduleView({
 
 function WeekScheduleView({
   events,
+  selectedDateEvents,
   selectedDateKey,
   weekDays,
   onOpenEvent,
   onSelectDate,
 }: {
   events: ScheduleEvent[];
+  selectedDateEvents: ScheduleEvent[];
   selectedDateKey: string;
   weekDays: Array<{ date: Date; dateKey: string }>;
   onOpenEvent: (event: ScheduleEvent) => void;
@@ -545,65 +745,68 @@ function WeekScheduleView({
   const { t } = useTranslation();
 
   return (
-    <View style={appScreenStyles.card}>
-      <Text style={appScreenStyles.cardTitle}>
-        {t('calendar.weekTitle', { range: formatWeekRange(weekDays) })}
-      </Text>
-      <View style={styles.weekStack}>
-        {weekDays.map((day) => {
-          const dayEvents = events.filter(
-            (event) => event.dateKey === day.dateKey,
-          );
-          const primaryEvent = dayEvents[0];
+    <View style={styles.calendarStack}>
+      <View style={appScreenStyles.card}>
+        <Text style={appScreenStyles.cardTitle}>
+          {t('calendar.weekTitle', { range: formatWeekRange(weekDays) })}
+        </Text>
+        <View style={styles.weekStack}>
+          {weekDays.map((day) => {
+            const dayEvents = events.filter(
+              (event) => event.dateKey === day.dateKey,
+            );
 
-          return (
-            <Pressable
-              accessibilityRole="button"
-              key={day.dateKey}
-              onPress={() => {
-                onSelectDate(day.dateKey);
-
-                if (primaryEvent) {
-                  onOpenEvent(primaryEvent);
-                }
-              }}
-              style={[
-                styles.weekDay,
-                selectedDateKey === day.dateKey && styles.weekDaySelected,
-              ]}
-            >
-              <View style={styles.weekDayDate}>
-                <Text style={styles.weekDayLabel}>
-                  {formatWeekday(day.date)}
-                </Text>
-                <Text style={styles.weekDayNumber}>{day.date.getDate()}</Text>
-              </View>
-              {primaryEvent ? (
-                <View
-                  style={[
-                    styles.weekEvent,
-                    { borderLeftColor: primaryEvent.color },
-                  ]}
-                >
-                  <Text style={styles.weekEventText}>
-                    {primaryEvent.label}
+            return (
+              <Pressable
+                accessibilityRole="button"
+                key={day.dateKey}
+                onPress={() => onSelectDate(day.dateKey)}
+                style={[
+                  styles.weekDay,
+                  selectedDateKey === day.dateKey && styles.weekDaySelected,
+                ]}
+              >
+                <View style={styles.weekDayDate}>
+                  <Text style={styles.weekDayLabel}>
+                    {formatWeekday(day.date)}
                   </Text>
-                  {dayEvents.length > 1 ? (
-                    <Text style={styles.moreEventsText}>
-                      {t('calendar.moreEvents', {
-                        count: dayEvents.length - 1,
-                      })}
-                    </Text>
-                  ) : null}
+                  <Text style={styles.weekDayNumber}>{day.date.getDate()}</Text>
+                  <EventDots events={dayEvents} />
                 </View>
-              ) : (
-                <Text style={styles.emptyDayText}>
-                  {t('calendar.emptyDay')}
-                </Text>
-              )}
-            </Pressable>
-          );
-        })}
+                <View style={styles.weekEventSummary}>
+                  {dayEvents.length > 0 ? (
+                    <>
+                      <Text style={styles.weekEventText}>
+                        {t('calendar.dayEventCount', {
+                          count: dayEvents.length,
+                        })}
+                      </Text>
+                      <Text style={styles.moreEventsText}>
+                        {dayEvents[0]?.label}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.emptyDayText}>
+                      {t('calendar.emptyDay')}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+      <View style={appScreenStyles.card}>
+        <Text style={appScreenStyles.cardTitle}>
+          {t('calendar.selectedDayTitle', {
+            date: formatDateOnly(selectedDateKey),
+          })}
+        </Text>
+        <EventList
+          emptyLabel={t('calendar.noEventsForDay')}
+          events={selectedDateEvents}
+          onOpenEvent={onOpenEvent}
+        />
       </View>
     </View>
   );
@@ -631,9 +834,84 @@ function EventList({
           onPress={() => onOpenEvent(event)}
           style={[styles.eventRow, { borderLeftColor: event.color }]}
         >
+          <Text style={styles.eventTeamText}>{event.teamName}</Text>
           <Text style={styles.eventText}>{event.label}</Text>
+          <Text style={appScreenStyles.meta}>{event.detailLabel}</Text>
         </Pressable>
       ))}
+    </View>
+  );
+}
+
+function EventDots({ events }: { events: ScheduleEvent[] }) {
+  if (events.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.eventDots}>
+      {events.slice(0, 5).map((event) => (
+        <View
+          key={`${event.type}-${event.id}`}
+          style={[styles.eventDot, { backgroundColor: event.color }]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function TeamFilterControl({
+  options,
+  value,
+  onChange,
+}: {
+  options: CalendarTeam[];
+  value: TeamFilterValue;
+  onChange: (value: TeamFilterValue) => void;
+}) {
+  const { t } = useTranslation();
+  const filterOptions = [
+    { id: ALL_TEAMS_FILTER, name: t('calendar.allTeams'), meta: '' },
+    ...options.map((team) => ({
+      id: team.id,
+      name: team.name,
+      meta: formatTeamMeta(team, t),
+    })),
+  ];
+
+  return (
+    <View style={styles.teamFilterCard}>
+      <Text style={styles.teamFilterLabel}>{t('calendar.teamFilterLabel')}</Text>
+      <View style={styles.teamFilterOptions}>
+        {filterOptions.map((option) => {
+          const isSelected = option.id === value;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              key={option.id}
+              onPress={() => onChange(option.id)}
+              style={[
+                styles.teamFilterOption,
+                isSelected && styles.teamFilterOptionSelected,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.teamFilterOptionText,
+                  isSelected && styles.teamFilterOptionTextSelected,
+                ]}
+              >
+                {option.name}
+              </Text>
+              {option.meta ? (
+                <Text style={styles.teamFilterOptionMeta}>{option.meta}</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -681,44 +959,76 @@ function SegmentedControl<T extends string>({
 }
 
 function makeScheduleEvents({
-  eventColors,
   games,
+  isAllTeamsSelected,
   practices,
   t,
+  teamById,
 }: {
-  eventColors: { home: string; away: string; practice: string };
   games: Game[];
+  isAllTeamsSelected: boolean;
   practices: PracticePlan[];
   t: (key: string, values?: Record<string, unknown>) => string;
+  teamById: Map<string, CalendarTeam>;
 }) {
   const gameEvents: ScheduleEvent[] = games.map((game) => {
     const date = parseDate(game.game_date);
+    const team = teamById.get(game.team_id);
+    const teamName = team?.name ?? t('calendar.selectedTeamFallback');
+    const location = game.location?.trim();
+    const time = formatTimeOnly(date);
 
     return {
-      color: game.is_home ? eventColors.home : eventColors.away,
+      color: getEventColor({
+        eventType: game.is_home ? 'home_game' : 'away_game',
+        isAllTeamsSelected,
+        team,
+      }),
       date,
       dateKey: toDateKey(date),
+      detailLabel: t('calendar.gameEventDetail', {
+        location: location || t('calendar.noLocation'),
+        time,
+        type: game.is_home ? t('games.homeBadge') : t('games.awayBadge'),
+      }),
       id: game.id,
+      isReadOnly: team?.access !== 'full',
       label: t('calendar.gameEventLabel', {
         opponentName: game.opponent_name,
-        time: formatTimeOnly(date),
+        time,
       }),
       sortTime: date.getTime(),
+      teamId: game.team_id,
+      teamName,
       type: game.is_home ? 'home_game' : 'away_game',
     };
   });
   const practiceEvents: ScheduleEvent[] = practices.map((practice) => {
     const date = parseDate(practice.practice_date);
+    const team = teamById.get(practice.team_id);
+    const teamName = team?.name ?? t('calendar.selectedTeamFallback');
+    const time = formatTimeOnly(date);
 
     return {
-      color: eventColors.practice,
+      color: getEventColor({
+        eventType: 'practice',
+        isAllTeamsSelected,
+        team,
+      }),
       date,
       dateKey: toDateKey(date),
+      detailLabel: t('calendar.practiceEventDetail', {
+        time,
+        type: t('calendar.practiceTypeLabel'),
+      }),
       id: practice.id,
+      isReadOnly: team?.access !== 'full',
       label: t('calendar.practiceEventLabel', {
-        time: formatTimeOnly(date),
+        time,
       }),
       sortTime: date.getTime(),
+      teamId: practice.team_id,
+      teamName,
       type: 'practice',
     };
   });
@@ -740,6 +1050,30 @@ function filterEvents(events: ScheduleEvent[], filter: ScheduleFilter) {
   return events;
 }
 
+function getEventColor({
+  eventType,
+  isAllTeamsSelected,
+  team,
+}: {
+  eventType: ScheduleEventType;
+  isAllTeamsSelected: boolean;
+  team?: CalendarTeam;
+}) {
+  if (isAllTeamsSelected) {
+    return team?.primary_color ?? goalRed;
+  }
+
+  if (eventType === 'home_game') {
+    return team?.primary_color ?? goalRed;
+  }
+
+  if (eventType === 'away_game') {
+    return team?.secondary_color ?? rinkNavy;
+  }
+
+  return team?.tertiary_color ?? NEUTRAL_EVENT_COLOR;
+}
+
 function makeMarkedDates(events: ScheduleEvent[], selectedDateKey: string) {
   const markedDates: MarkedDates = {};
 
@@ -747,9 +1081,10 @@ function makeMarkedDates(events: ScheduleEvent[], selectedDateKey: string) {
     const current = markedDates[event.dateKey] ?? { dots: [] };
     const dots = current.dots ?? [];
 
-    if (!dots.some((dot) => dot.key === event.type)) {
-      dots.push({ color: event.color, key: event.type });
-    }
+    dots.push({
+      color: event.color,
+      key: `${event.type}-${event.id}`,
+    });
 
     markedDates[event.dateKey] = { ...current, dots };
   });
@@ -761,17 +1096,6 @@ function makeMarkedDates(events: ScheduleEvent[], selectedDateKey: string) {
   };
 
   return markedDates;
-}
-
-function groupEventsByDate(events: ScheduleEvent[]) {
-  const eventsByDate = new Map<string, ScheduleEvent[]>();
-
-  events.forEach((event) => {
-    const existingEvents = eventsByDate.get(event.dateKey) ?? [];
-    eventsByDate.set(event.dateKey, [...existingEvents, event]);
-  });
-
-  return eventsByDate;
 }
 
 function buildScheduleExportHtml({
@@ -815,6 +1139,48 @@ function buildScheduleExportHtml({
       </body>
     </html>
   `;
+}
+
+function normalizeTeamRelation(teamRelation: TeamRelation) {
+  return Array.isArray(teamRelation) ? teamRelation[0] ?? null : teamRelation;
+}
+
+function mergeCalendarTeams(teams: CalendarTeam[]) {
+  const teamsById = new Map<string, CalendarTeam>();
+
+  for (const team of teams) {
+    const existingTeam = teamsById.get(team.id);
+
+    if (!existingTeam) {
+      teamsById.set(team.id, team);
+      continue;
+    }
+
+    teamsById.set(team.id, {
+      ...existingTeam,
+      ...team,
+      access:
+        existingTeam.access === 'full' || team.access === 'full'
+          ? 'full'
+          : 'assignment',
+      membership_role: existingTeam.membership_role ?? team.membership_role,
+    });
+  }
+
+  return Array.from(teamsById.values()).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+}
+
+function formatTeamMeta(
+  team: Pick<CalendarTeam, 'level' | 'season'>,
+  t: (key: string, values?: Record<string, unknown>) => string,
+) {
+  if (!team.level && !team.season) {
+    return t('teamSwitcher.noDetails');
+  }
+
+  return [team.level, team.season].filter(Boolean).join(' / ');
 }
 
 function getWeekDays(date: Date) {
@@ -898,21 +1264,6 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#039;');
 }
 
-function getReadableTextColor(backgroundColor: string) {
-  const normalized = backgroundColor.replace('#', '');
-
-  if (normalized.length !== 6) {
-    return '#ffffff';
-  }
-
-  const red = Number.parseInt(normalized.slice(0, 2), 16);
-  const green = Number.parseInt(normalized.slice(2, 4), 16);
-  const blue = Number.parseInt(normalized.slice(4, 6), 16);
-  const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
-
-  return luminance > 0.62 ? rinkNavy : '#ffffff';
-}
-
 export function formatGameDate(value: string) {
   const date = new Date(value);
 
@@ -960,6 +1311,18 @@ const styles = StyleSheet.create({
   eventList: {
     gap: 10,
   },
+  eventDot: {
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  eventDots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 3,
+    justifyContent: 'center',
+    marginTop: 4,
+  },
   eventRow: {
     backgroundColor: colors.cardPressed,
     borderLeftWidth: 5,
@@ -971,6 +1334,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
+  eventTeamText: {
+    color: goalRed,
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   headerActions: {
     alignItems: 'flex-start',
   },
@@ -979,41 +1348,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 4,
-  },
-  monthDayBox: {
-    alignItems: 'center',
-    backgroundColor: colors.fieldBackground,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 38,
-    justifyContent: 'center',
-    marginVertical: 1,
-    position: 'relative',
-    width: 38,
-  },
-  monthDayBoxDisabled: {
-    opacity: 0.35,
-  },
-  monthDayBoxSelected: {
-    borderColor: goalRed,
-    borderWidth: 2,
-  },
-  monthDayCount: {
-    bottom: 2,
-    fontSize: 9,
-    fontWeight: '900',
-    position: 'absolute',
-    right: 4,
-  },
-  monthDayText: {
-    color: colors.textPrimary,
-    fontFamily: fonts.display,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  monthDayTextDisabled: {
-    color: slateGrey,
   },
   pressed: {
     backgroundColor: colors.cardPressed,
@@ -1041,6 +1375,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   segmentedOptionTextActive: {
+    color: goalRed,
+  },
+  teamFilterCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12,
+  },
+  teamFilterLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  teamFilterOption: {
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  teamFilterOptionMeta: {
+    color: slateGrey,
+    fontSize: 12,
+  },
+  teamFilterOptions: {
+    gap: 8,
+  },
+  teamFilterOptionSelected: {
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
+  },
+  teamFilterOptionText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  teamFilterOptionTextSelected: {
     color: goalRed,
   },
   weekDay: {
@@ -1073,11 +1448,11 @@ const styles = StyleSheet.create({
   weekDaySelected: {
     borderColor: goalRed,
   },
-  weekEvent: {
+  weekEventSummary: {
     backgroundColor: colors.cardPressed,
-    borderLeftWidth: 5,
     borderRadius: 8,
     flex: 1,
+    gap: 2,
     padding: 8,
   },
   weekEventText: {

@@ -453,6 +453,9 @@
     "awayBadge": "Extérieur"
   },
   "calendar": {
+    "allTeams": "Toutes les équipes",
+    "teamFilterLabel": "Équipe",
+    "selectedTeamFallback": "Équipe sélectionnée",
     "views": {
       "list": "Liste",
       "week": "Semaine",
@@ -464,12 +467,18 @@
       "practices": "Entraînements seulement"
     },
     "gameEventLabel": "c. {{opponentName}}, {{time}}",
+    "gameEventDetail": "{{type}} / {{location}} / {{time}}",
     "practiceEventLabel": "Entraînement, {{time}}",
+    "practiceEventDetail": "{{type}} / {{time}}",
+    "practiceTypeLabel": "Entraînement",
+    "noLocation": "Aucun lieu",
     "selectedDayTitle": "{{date}}",
     "weekTitle": "Semaine du {{range}}",
     "emptyDay": "Aucun événement",
     "noEvents": "Aucun événement.",
     "noEventsForDay": "Aucun événement pour cette journée.",
+    "dayEventCount": "{{count}} événement",
+    "dayEventCount_plural": "{{count}} événements",
     "moreEvents": "+{{count}} de plus",
     "exportButton": "Exporter PDF",
     "exporting": "Exportation...",

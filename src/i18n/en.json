@@ -453,6 +453,9 @@
     "awayBadge": "Away"
   },
   "calendar": {
+    "allTeams": "All Teams",
+    "teamFilterLabel": "Team",
+    "selectedTeamFallback": "Selected team",
     "views": {
       "list": "List",
       "week": "Week",
@@ -464,12 +467,18 @@
       "practices": "Practices only"
     },
     "gameEventLabel": "vs {{opponentName}}, {{time}}",
+    "gameEventDetail": "{{type}} / {{location}} / {{time}}",
     "practiceEventLabel": "Practice, {{time}}",
+    "practiceEventDetail": "{{type}} / {{time}}",
+    "practiceTypeLabel": "Practice",
+    "noLocation": "No location",
     "selectedDayTitle": "{{date}}",
     "weekTitle": "Week of {{range}}",
     "emptyDay": "No event",
     "noEvents": "No events.",
     "noEventsForDay": "No events for this day.",
+    "dayEventCount": "{{count}} event",
+    "dayEventCount_plural": "{{count}} events",
     "moreEvents": "+{{count}} more",
     "exportButton": "Export PDF",
     "exporting": "Exporting...",
