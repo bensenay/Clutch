@@ -68,8 +68,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const { error } = await supabase.functions.invoke('create-organization', {
-        body: intent.payload,
+      const functionName =
+        intent.type === 'assistant_join_team'
+          ? 'join-team-as-assistant'
+          : 'create-organization';
+      const body =
+        intent.type === 'assistant_join_team'
+          ? { team_join_code: intent.payload.teamJoinCode }
+          : intent.payload;
+
+      const { error } = await supabase.functions.invoke(functionName, {
+        body,
         headers: {
           Authorization: `Bearer ${nextSession.access_token}`,
         },

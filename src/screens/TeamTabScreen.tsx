@@ -2,7 +2,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Button, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
@@ -35,6 +35,7 @@ type Profile = {
 
 type MembershipRow = {
   team_id: string;
+  membership_role: 'head_coach' | 'assistant_coach';
   teams: ActiveTeam | ActiveTeam[] | null;
 };
 
@@ -110,7 +111,7 @@ export function TeamTabScreen({ navigation }: Props) {
       const { data, error } = await supabase
         .from('team_memberships')
         .select(
-          'team_id, teams ( id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url )',
+          'team_id, membership_role, teams ( id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url )',
         )
         .order('created_at', { ascending: true });
 
@@ -118,20 +119,46 @@ export function TeamTabScreen({ navigation }: Props) {
         throw error;
       }
 
-      return ((data ?? []) as MembershipRow[])
-        .map((row) => {
-          const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
-          return team ?? null;
-        })
-        .filter((team): team is ActiveTeam => Boolean(team));
+      const membershipRows = (data ?? []) as MembershipRow[];
+      const membershipTeamsForCoach: ActiveTeam[] = [];
+
+      for (const row of membershipRows) {
+        const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+
+        if (team) {
+          membershipTeamsForCoach.push({
+            ...team,
+            membership_role: row.membership_role,
+          });
+        }
+      }
+
+      return membershipTeamsForCoach;
     },
     enabled: profile?.role === 'coach',
   });
 
+  const membershipTeams = coachTeamsQuery.data ?? EMPTY_TEAMS;
+  const headCoachTeams = useMemo(
+    () =>
+      membershipTeams.filter(
+        (team) => team.membership_role !== 'assistant_coach',
+      ),
+    [membershipTeams],
+  );
+  const assistantCoachTeams = useMemo(
+    () =>
+      membershipTeams.filter(
+        (team) => team.membership_role === 'assistant_coach',
+      ),
+    [membershipTeams],
+  );
   const teams =
     profile?.role === 'director'
       ? directorTeamsQuery.data ?? EMPTY_TEAMS
-      : coachTeamsQuery.data ?? EMPTY_TEAMS;
+      : headCoachTeams;
+  const activeMembershipTeams =
+    profile?.role === 'coach' ? membershipTeams : teams;
   const isLoading =
     profileQuery.isLoading ||
     directorTeamsQuery.isLoading ||
@@ -140,30 +167,42 @@ export function TeamTabScreen({ navigation }: Props) {
     Boolean(profileQuery.error) ||
     Boolean(directorTeamsQuery.error) ||
     Boolean(coachTeamsQuery.error);
+  const shouldShowDashboard =
+    Boolean(activeTeam) &&
+    (profile?.role === 'director' ||
+      activeTeamAccess.mode === 'assignment' ||
+      activeTeam?.membership_role !== 'assistant_coach');
 
   useEffect(() => {
     if (
       profile?.role === 'coach' &&
       teams.length === 1 &&
-      activeTeamAccess.mode === 'membership'
+      activeTeamAccess.mode === 'membership' &&
+      activeTeam?.id !== teams[0].id
     ) {
       setActiveTeam(teams[0]);
     }
-  }, [activeTeamAccess.mode, profile?.role, setActiveTeam, teams]);
+  }, [
+    activeTeam?.id,
+    activeTeamAccess.mode,
+    profile?.role,
+    setActiveTeam,
+    teams,
+  ]);
 
   useEffect(() => {
     if (activeTeamAccess.mode === 'assignment') {
       return;
     }
 
-    if (!activeTeam || teams.length === 0) {
+    if (!activeTeam || activeMembershipTeams.length === 0) {
       return;
     }
 
-    if (!teams.some((team) => team.id === activeTeam.id)) {
+    if (!activeMembershipTeams.some((team) => team.id === activeTeam.id)) {
       setActiveTeam(null);
     }
-  }, [activeTeam, activeTeamAccess.mode, setActiveTeam, teams]);
+  }, [activeMembershipTeams, activeTeam, activeTeamAccess.mode, setActiveTeam]);
 
   return (
     <AppScreen
@@ -192,7 +231,7 @@ export function TeamTabScreen({ navigation }: Props) {
           userId={session.user.id}
         />
       ) : null}
-      {activeTeam ? (
+      {activeTeam && shouldShowDashboard ? (
         <TeamDashboard
           team={activeTeam}
           onOpenGame={(gameId) =>
@@ -237,13 +276,24 @@ export function TeamTabScreen({ navigation }: Props) {
           </View>
         </View>
       ) : null}
+      {profile?.role === 'coach' && assistantCoachTeams.length > 0 ? (
+        <AssistantTeamRosterAccess
+          activeTeamId={activeTeam?.id ?? null}
+          navigation={navigation}
+          teams={assistantCoachTeams}
+          onSelectTeam={setActiveTeam}
+        />
+      ) : null}
       {profile?.role === 'coach' && teams.length > 0 && session ? (
         <AssistantAssignmentSchedule
           navigation={navigation}
           userId={session.user.id}
         />
       ) : null}
-      {!isLoading && profile?.role !== 'super_admin' && teams.length === 0 ? (
+      {!isLoading &&
+      profile?.role !== 'super_admin' &&
+      teams.length === 0 &&
+      assistantCoachTeams.length === 0 ? (
         profile?.role === 'coach' ? null : (
         <View style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>
@@ -402,6 +452,61 @@ function TeamDashboard({
   );
 }
 
+function AssistantTeamRosterAccess({
+  activeTeamId,
+  navigation,
+  teams,
+  onSelectTeam,
+}: {
+  activeTeamId: string | null;
+  navigation: Props['navigation'];
+  teams: ActiveTeam[];
+  onSelectTeam: (team: ActiveTeam) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={appScreenStyles.card}>
+      <Text style={appScreenStyles.cardTitle}>
+        {t('teamTab.assistantTeamsTitle')}
+      </Text>
+      <Text style={appScreenStyles.cardDescription}>
+        {t('teamTab.assistantTeamsDescription')}
+      </Text>
+      <View style={styles.list}>
+        {teams.map((team) => {
+          const isSelected = activeTeamId === team.id;
+
+          return (
+            <View key={team.id} style={styles.assistantTeamCard}>
+              <View style={styles.dashboardTitleBlock}>
+                <Text style={appScreenStyles.cardTitle}>{team.name}</Text>
+                <Text style={appScreenStyles.meta}>
+                  {[team.level, team.season].filter(Boolean).join(' / ') ||
+                    t('teamSwitcher.noDetails')}
+                </Text>
+              </View>
+              {isSelected ? (
+                <Text style={appScreenStyles.note}>
+                  {t('teamTab.assistantTeamActiveNotice')}
+                </Text>
+              ) : null}
+              <Button
+                color={goalRed}
+                title={t('teamTab.openReadOnlyRosterButton')}
+                onPress={() => {
+                  onSelectTeam(team);
+                  navigation.navigate('RosterTab');
+                }}
+              />
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function getTeamInitials(teamName: string) {
   const initials = teamName
     .split(/\s+/)
@@ -420,6 +525,14 @@ const styles = StyleSheet.create({
   activeTeamRow: {
     backgroundColor: colors.cardPressed,
     borderColor: goalRed,
+  },
+  assistantTeamCard: {
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12,
   },
   dashboardHeader: {
     alignItems: 'center',

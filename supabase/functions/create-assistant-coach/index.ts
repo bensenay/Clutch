@@ -52,8 +52,22 @@ function getEmail(input: unknown) {
     : '';
 }
 
+function getTeamId(input: unknown) {
+  return typeof input === 'object' &&
+    input !== null &&
+    'team_id' in input &&
+    typeof input.team_id === 'string'
+    ? input.team_id.trim()
+    : '';
+}
+
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(value);
 }
 
 function sleep(ms: number) {
@@ -122,9 +136,14 @@ Deno.serve(async (request) => {
     }
 
     const email = getEmail(input);
+    const teamId = getTeamId(input);
 
     if (!email || !isValidEmail(email)) {
       return json({ error: 'A valid email is required.' }, 400);
+    }
+
+    if (!teamId || !isValidUuid(teamId)) {
+      return json({ error: 'A valid team_id is required.' }, 400);
     }
 
     const { data: profile, error: profileError } = await admin
@@ -164,6 +183,28 @@ Deno.serve(async (request) => {
       return json({ error: 'This organization is currently suspended.' }, 403);
     }
 
+    const { data: team, error: teamError } = await admin
+      .from('teams')
+      .select('id, school_id')
+      .eq('id', teamId)
+      .maybeSingle();
+
+    if (teamError) {
+      console.error('Unable to read assistant coach team:', teamError);
+      return json({ error: 'Unable to verify the team.' }, 500);
+    }
+
+    if (!team) {
+      return json({ error: 'The selected team does not exist.' }, 404);
+    }
+
+    if (team.school_id !== profile.school_id) {
+      return json(
+        { error: 'Directors can only invite assistants to teams in their school.' },
+        403,
+      );
+    }
+
     const { data: inviteData, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(email);
 
@@ -191,6 +232,28 @@ Deno.serve(async (request) => {
         {
           error:
             'The invite was sent, but the coach profile could not be assigned to this organization. Contact support.',
+        },
+        500,
+      );
+    }
+
+    const { error: membershipError } = await admin
+      .from('team_memberships')
+      .insert({
+        user_id: userId,
+        team_id: team.id,
+        membership_role: 'assistant_coach',
+      });
+
+    if (membershipError) {
+      console.error(
+        'Unable to create assistant coach team membership:',
+        membershipError,
+      );
+      return json(
+        {
+          error:
+            'The invite was sent, but the assistant could not be added to the team. Contact support.',
         },
         500,
       );

@@ -12,6 +12,7 @@ export type ActiveTeam = {
   name: string;
   level: string | null;
   season: string | null;
+  membership_role?: 'head_coach' | 'assistant_coach' | null;
   primary_color: string | null;
   secondary_color: string | null;
   tertiary_color: string | null;
@@ -57,7 +58,9 @@ export function ActiveTeamProvider({ children }: PropsWithChildren) {
     () => ({
       activeTeam,
       activeTeamAccess,
-      isReadOnlyTeam: activeTeamAccess.mode === 'assignment',
+      isReadOnlyTeam:
+        activeTeamAccess.mode === 'assignment' ||
+        activeTeam?.membership_role === 'assistant_coach',
       setActiveTeam: setActiveTeamWithAccess,
     }),
     [activeTeam, activeTeamAccess, setActiveTeamWithAccess],

@@ -6,6 +6,10 @@ export type PendingOnboardingIntent =
   {
     type: 'director';
     payload: { organizationName: string };
+  }
+  | {
+    type: 'assistant_join_team';
+    payload: { teamJoinCode: string };
   };
 
 function isPendingOnboardingIntent(
@@ -26,6 +30,13 @@ function isPendingOnboardingIntent(
     return (
       'organizationName' in value.payload &&
       typeof value.payload.organizationName === 'string'
+    );
+  }
+
+  if (value.type === 'assistant_join_team') {
+    return (
+      'teamJoinCode' in value.payload &&
+      typeof value.payload.teamJoinCode === 'string'
     );
   }
 

@@ -4,6 +4,7 @@ export type AuthStackParamList = {
   Landing: undefined;
   SignIn: undefined;
   AccountType: undefined;
+  AssistantCoachSignup: undefined;
   CoachSignup: undefined;
   DirectorSignup: undefined;
 };

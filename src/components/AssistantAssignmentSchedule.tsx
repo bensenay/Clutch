@@ -56,6 +56,8 @@ type PracticeMatch = {
   practice_date: string;
 };
 
+const EMPTY_ASSIGNMENTS: AssignmentRow[] = [];
+
 export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
   const { i18n, t } = useTranslation();
   const queryClient = useQueryClient();
@@ -94,7 +96,7 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
       return (data ?? []) as AssignmentRow[];
     },
   });
-  const assignments = assignmentsQuery.data ?? [];
+  const assignments = assignmentsQuery.data ?? EMPTY_ASSIGNMENTS;
   const teamIds = useMemo(
     () => Array.from(new Set(assignments.map((assignment) => assignment.team_id))),
     [assignments],
@@ -157,14 +159,16 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
   useEffect(() => {
     setNotesByAssignmentId((currentNotes) => {
       const nextNotes = { ...currentNotes };
+      let hasChanges = false;
 
       for (const assignment of assignments) {
         if (!(assignment.id in nextNotes)) {
           nextNotes[assignment.id] = assignment.coach_note ?? '';
+          hasChanges = true;
         }
       }
 
-      return nextNotes;
+      return hasChanges ? nextNotes : currentNotes;
     });
   }, [assignments]);
 

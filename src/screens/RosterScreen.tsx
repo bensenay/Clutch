@@ -43,6 +43,9 @@ export type Player = {
 export function RosterScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { activeTeam, isReadOnlyTeam } = useActiveTeam();
+  const isAssistantCoachRoster =
+    activeTeam?.membership_role === 'assistant_coach';
+  const isReadOnlyRoster = isReadOnlyTeam || isAssistantCoachRoster;
 
   const playersQuery = useQuery({
     queryKey: ['players', activeTeam?.id],
@@ -84,7 +87,7 @@ export function RosterScreen({ navigation }: Props) {
   return (
     <AppScreen
       action={
-        isReadOnlyTeam ? undefined : (
+        isReadOnlyRoster ? undefined : (
           <Button
             color={goalRed}
             title={t('roster.addPlayerButton')}
@@ -109,7 +112,7 @@ export function RosterScreen({ navigation }: Props) {
           <Text style={appScreenStyles.cardDescription}>
             {t('roster.emptyDescription')}
           </Text>
-          {isReadOnlyTeam ? null : (
+          {isReadOnlyRoster ? null : (
             <Button
               color={goalRed}
               title={t('roster.addFirstPlayerButton')}
@@ -126,7 +129,7 @@ export function RosterScreen({ navigation }: Props) {
             onPress={() =>
               navigation.navigate('PlayerForm', {
                 playerId: player.id,
-                readOnly: isReadOnlyTeam,
+                readOnly: isReadOnlyRoster,
               })
             }
             style={({ pressed }) => [

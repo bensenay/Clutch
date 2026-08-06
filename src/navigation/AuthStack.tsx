@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AccountTypeScreen } from '../screens/AccountTypeScreen';
+import { AssistantCoachSignupScreen } from '../screens/AssistantCoachSignupScreen';
 import { CoachSignupScreen } from '../screens/CoachSignupScreen';
 import { DirectorSignupScreen } from '../screens/DirectorSignupScreen';
 import { LandingScreen } from '../screens/LandingScreen';
@@ -39,6 +40,11 @@ export function AuthStack() {
         component={AccountTypeScreen}
         name="AccountType"
         options={{ title: t('landing.createAccount') }}
+      />
+      <Stack.Screen
+        component={AssistantCoachSignupScreen}
+        name="AssistantCoachSignup"
+        options={{ title: t('assistantCoachSignup.headerTitle') }}
       />
       <Stack.Screen
         component={CoachSignupScreen}
