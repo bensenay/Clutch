@@ -1,10 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Button } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { AppButton } from '../components/AppButton';
 import { AuthScreen } from '../components/AuthScreen';
 import { setLanguage } from '../i18n';
 import type { AuthStackParamList } from '../navigation/types';
-import { goalRed } from '../theme/theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Landing'>;
 
@@ -17,20 +16,21 @@ export function LandingScreen({ navigation }: Props) {
       description={t('landing.description')}
       title={t('landing.title')}
     >
-      <Button
-        color={goalRed}
+      <AppButton
+        icon="log-in-outline"
         title={t('landing.signIn')}
         onPress={() => navigation.navigate('SignIn')}
       />
-      <Button
-        color={goalRed}
+      <AppButton
+        icon="rocket-outline"
         title={t('landing.createAccount')}
         onPress={() => navigation.navigate('AccountType')}
       />
-      <Button
-        color={goalRed}
+      <AppButton
+        icon="language-outline"
         title={nextLanguage.toUpperCase()}
         onPress={() => void setLanguage(nextLanguage)}
+        variant="secondary"
       />
     </AuthScreen>
   );

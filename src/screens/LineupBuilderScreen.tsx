@@ -1,9 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Button,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,17 +12,30 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { JerseyIcon } from '../components/JerseyIcon';
 import type { AuthenticatedStackParamList } from '../navigation/types';
+import {
+  fetchWithCache,
+  isLikelyNetworkError,
+  makeLineupCacheKey,
+  makeTeamCacheKey,
+} from '../offline/cache';
+import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import {
   colors,
+  fontSizes,
   fonts,
   goalRed,
   hornAmber,
   iceWhite,
+  lineHeights,
+  radii,
   rinkNavy,
+  sizes,
+  spacing,
 } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 import type { Player } from './RosterScreen';
@@ -125,6 +138,8 @@ export function LineupBuilderScreen({ route }: Props) {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [cachedPlayersAt, setCachedPlayersAt] = useState<string | null>(null);
+  const [cachedLineupAt, setCachedLineupAt] = useState<string | null>(null);
 
   const playersQuery = useQuery({
     queryKey: ['players', activeTeam?.id],
@@ -133,21 +148,28 @@ export function LineupBuilderScreen({ route }: Props) {
         throw new Error(t('roster.noActiveTeamTitle'));
       }
 
-      const { data, error: loadError } = await supabase
-        .from('players')
-        .select(
-          'id, team_id, first_name, last_name, jersey_number, natural_position, height, weight, status, status_note, parent_name, parent_phone, emergency_contact_name, emergency_contact_phone, medical_notes, created_at',
-        )
-        .eq('team_id', activeTeam.id)
-        .order('jersey_number', { ascending: true, nullsFirst: false })
-        .order('last_name', { ascending: true })
-        .order('first_name', { ascending: true });
+      return fetchWithCache<Player[]>({
+        cacheKey: makeTeamCacheKey('players', activeTeam.id),
+        fetcher: async () => {
+          const { data, error: loadError } = await supabase
+            .from('players')
+            .select(
+              'id, team_id, first_name, last_name, jersey_number, natural_position, height, weight, status, status_note, parent_name, parent_phone, emergency_contact_name, emergency_contact_phone, medical_notes, created_at',
+            )
+            .eq('team_id', activeTeam.id)
+            .order('jersey_number', { ascending: true, nullsFirst: false })
+            .order('last_name', { ascending: true })
+            .order('first_name', { ascending: true });
 
-      if (loadError) {
-        throw loadError;
-      }
+          if (loadError) {
+            throw loadError;
+          }
 
-      return (data ?? []) as Player[];
+          return (data ?? []) as Player[];
+        },
+        onCacheFallback: setCachedPlayersAt,
+        onNetworkSuccess: () => setCachedPlayersAt(null),
+      });
     },
     enabled: Boolean(activeTeam),
   });
@@ -155,19 +177,26 @@ export function LineupBuilderScreen({ route }: Props) {
   const lineupQuery = useQuery({
     queryKey: ['lineup', gameId],
     queryFn: async () => {
-      const { data, error: loadError } = await supabase
-        .from('lineups')
-        .select(
-          'id, game_id, lines, defense_pairs, goalies, special_teams, created_at, updated_at',
-        )
-        .eq('game_id', gameId)
-        .maybeSingle();
+      return fetchWithCache<LineupRow | null>({
+        cacheKey: makeLineupCacheKey(gameId),
+        fetcher: async () => {
+          const { data, error: loadError } = await supabase
+            .from('lineups')
+            .select(
+              'id, game_id, lines, defense_pairs, goalies, special_teams, created_at, updated_at',
+            )
+            .eq('game_id', gameId)
+            .maybeSingle();
 
-      if (loadError) {
-        throw loadError;
-      }
+          if (loadError) {
+            throw loadError;
+          }
 
-      return data as LineupRow | null;
+          return data as LineupRow | null;
+        },
+        onCacheFallback: setCachedLineupAt,
+        onNetworkSuccess: () => setCachedLineupAt(null),
+      });
     },
   });
 
@@ -195,6 +224,8 @@ export function LineupBuilderScreen({ route }: Props) {
     },
     enabled: Boolean(activeTeam) && !isReadOnly,
   });
+  const refetchLineup = lineupQuery.refetch;
+  const refetchPlayers = playersQuery.refetch;
 
   const players = playersQuery.data ?? EMPTY_PLAYERS;
   const playerById = useMemo(
@@ -236,6 +267,16 @@ export function LineupBuilderScreen({ route }: Props) {
     secondaryColor: activeTeam?.secondary_color ?? DEFAULT_SECONDARY_COLOR,
     tertiaryColor: activeTeam?.tertiary_color ?? DEFAULT_TERTIARY_COLOR,
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTeam) {
+        void refetchPlayers();
+      }
+
+      void refetchLineup();
+    }, [activeTeam?.id, refetchLineup, refetchPlayers]),
+  );
 
   useEffect(() => {
     const lineup = lineupQuery.data;
@@ -462,7 +503,11 @@ export function LineupBuilderScreen({ route }: Props) {
 
     if (saveResult.error) {
       console.error('Unable to save lineup:', saveResult.error);
-      setError(t('lineup.saveError'));
+      setError(
+        isLikelyNetworkError(saveResult.error)
+          ? t('offline.writeBlocked')
+          : t('lineup.saveError'),
+      );
       setIsSaving(false);
       return;
     }
@@ -496,6 +541,8 @@ export function LineupBuilderScreen({ route }: Props) {
       {playersQuery.error || lineupQuery.error ? (
         <Text style={appScreenStyles.error}>{t('lineup.loadError')}</Text>
       ) : null}
+      <OfflineNotice cachedAt={cachedPlayersAt} />
+      <OfflineNotice cachedAt={cachedLineupAt} />
       <View style={styles.switcher}>
         {VIEW_ORDER.map((view) => (
           <Pressable
@@ -683,13 +730,14 @@ export function LineupBuilderScreen({ route }: Props) {
         <Text style={appScreenStyles.note}>{t('common.readOnlyNotice')}</Text>
       ) : (
         <>
-          <Button
-            color={goalRed}
+          <AppButton
+            icon="refresh-outline"
             title={t('lineup.resetButton')}
             onPress={resetCurrentView}
+            variant="secondary"
           />
-          <Button
-            color={goalRed}
+          <AppButton
+            icon="save-outline"
             disabled={isSaving}
             title={isSaving ? t('lineup.saving') : t('lineup.saveButton')}
             onPress={() => void handleSave()}
@@ -789,8 +837,8 @@ function SavedLineupPicker({
                 </Text>
               ) : null}
             </View>
-            <Button
-              color={goalRed}
+            <AppButton
+              icon="checkmark-circle-outline"
               title={t('lineup.applySavedButton')}
               onPress={() => onApply(lineup)}
             />
@@ -858,10 +906,11 @@ function SlotView({
           : label || t('lineup.emptySlot')}
       </Text>
       {!isReadOnly && player && removeSlotKey === slotKey ? (
-        <Button
-          color={goalRed}
+        <AppButton
+          icon="remove-circle-outline"
           title={t('lineup.removeSlotButton')}
           onPress={onRemove}
+          variant="secondary"
         />
       ) : null}
     </Pressable>
@@ -1031,8 +1080,8 @@ function renderForwardLineSection({
         </View>
       ))}
       {isReadOnly ? null : (
-        <Button
-          color={goalRed}
+        <AppButton
+          icon={showFourthForwardLine ? 'remove-circle-outline' : 'add-circle-outline'}
           title={
             showFourthForwardLine
               ? t('lineup.removeFourthLineButton')
@@ -1595,8 +1644,8 @@ function getSlotAbbreviation(slotKey: string, label: string) {
 
 const styles = StyleSheet.create({
   compactCard: {
-    gap: 6,
-    padding: 12,
+    gap: spacing.lineGap,
+    padding: spacing.md,
   },
   filledSlot: {
     backgroundColor: colors.cardPressed,
@@ -1604,58 +1653,58 @@ const styles = StyleSheet.create({
   },
   goalieName: {
     color: colors.textPrimary,
-    fontSize: 15,
+    fontSize: fontSizes.base,
     fontWeight: '700',
   },
   goalieRow: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 12,
+    padding: spacing.md,
   },
   playerChip: {
     alignItems: 'center',
-    borderRadius: 12,
-    gap: 4,
-    minWidth: 68,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
+    borderRadius: radii.card,
+    gap: spacing.xs,
+    minWidth: sizes.lineupChipMinWidth,
+    paddingHorizontal: spacing.lineGap,
+    paddingVertical: spacing.lineGap,
   },
   playerChipName: {
     color: colors.textPrimary,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
     fontWeight: '700',
-    maxWidth: 74,
+    maxWidth: sizes.lineupChipNameMaxWidth,
     textAlign: 'center',
   },
   pool: {
     flexDirection: 'row',
-    gap: 10,
-    paddingVertical: 4,
+    gap: spacing.control,
+    paddingVertical: spacing.xs,
   },
   poolScroller: {
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   savedLineupDetails: {
     flex: 1,
-    gap: 3,
+    gap: spacing.tight,
   },
   savedLineupRow: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.control,
     justifyContent: 'space-between',
-    padding: 10,
+    padding: spacing.control,
   },
   savedLineupTitle: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '800',
   },
   selectedPlayerChip: {
@@ -1665,27 +1714,27 @@ const styles = StyleSheet.create({
   slot: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     borderWidth: 1,
     flex: 1,
-    gap: 2,
+    gap: spacing.xxs,
     minWidth: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   slotGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: spacing.lineGap,
   },
   slotValue: {
     color: colors.textPrimary,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
     fontWeight: '700',
     textAlign: 'center',
   },
   specialTeamUnit: {
-    gap: 8,
+    gap: spacing.sm,
   },
   starterRow: {
     backgroundColor: colors.warningSoft,
@@ -1693,21 +1742,21 @@ const styles = StyleSheet.create({
   },
   starterText: {
     color: hornAmber,
-    fontSize: 13,
+    fontSize: fontSizes.sm,
     fontWeight: '700',
   },
   switcher: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   switcherOption: {
     backgroundColor: colors.card,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.control,
   },
   switcherOptionActive: {
     backgroundColor: colors.cardPressed,
@@ -1715,7 +1764,7 @@ const styles = StyleSheet.create({
   },
   switcherText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '700',
   },
   switcherTextActive: {
@@ -1724,15 +1773,15 @@ const styles = StyleSheet.create({
   successMessage: {
     color: colors.success,
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: lineHeights.md,
   },
   unit: {
-    gap: 5,
+    gap: spacing.formGap,
   },
   unitTitle: {
     color: colors.textPrimary,
     fontFamily: fonts.display,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '800',
   },
 });

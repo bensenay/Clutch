@@ -18,16 +18,19 @@ export function AccountTypeScreen({ navigation }: Props) {
       <View style={authStyles.choiceList}>
         <ChoiceButton
           description={t('accountType.directorDescription')}
+          icon="school-outline"
           title={t('accountType.directorTitle')}
           onPress={() => navigation.navigate('DirectorSignup')}
         />
         <ChoiceButton
           description={t('accountType.coachDescription')}
+          icon="clipboard-outline"
           title={t('accountType.coachTitle')}
           onPress={() => navigation.navigate('CoachSignup')}
         />
         <ChoiceButton
           description={t('accountType.assistantCoachDescription')}
+          icon="people-outline"
           title={t('accountType.assistantCoachTitle')}
           onPress={() => navigation.navigate('AssistantCoachSignup')}
         />

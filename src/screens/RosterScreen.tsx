@@ -1,17 +1,25 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { AnimatedPressable } from '../components/AnimatedPressable';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingState } from '../components/LoadingState';
 import type {
   AuthenticatedStackParamList,
   AuthenticatedTabParamList,
 } from '../navigation/types';
+import { fetchWithCache, makeTeamCacheKey } from '../offline/cache';
+import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { colors, fonts, goalRed } from '../theme/theme';
+import { colors, fonts, goalRed, spacing } from '../theme/theme';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AuthenticatedTabParamList, 'RosterTab'>,
@@ -43,6 +51,7 @@ export type Player = {
 export function RosterScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { activeTeam, isReadOnlyTeam } = useActiveTeam();
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
   const isAssistantCoachRoster =
     activeTeam?.membership_role === 'assistant_coach';
   const isReadOnlyRoster = isReadOnlyTeam || isAssistantCoachRoster;
@@ -54,24 +63,40 @@ export function RosterScreen({ navigation }: Props) {
         throw new Error(t('roster.noActiveTeamTitle'));
       }
 
-      const { data, error } = await supabase
-        .from('players')
-        .select(
-          'id, team_id, first_name, last_name, jersey_number, natural_position, height, weight, status, status_note, parent_name, parent_phone, emergency_contact_name, emergency_contact_phone, medical_notes, created_at',
-        )
-        .eq('team_id', activeTeam.id)
-        .order('jersey_number', { ascending: true, nullsFirst: false })
-        .order('last_name', { ascending: true })
-        .order('first_name', { ascending: true });
+      return fetchWithCache<Player[]>({
+        cacheKey: makeTeamCacheKey('players', activeTeam.id),
+        fetcher: async () => {
+          const { data, error } = await supabase
+            .from('players')
+            .select(
+              'id, team_id, first_name, last_name, jersey_number, natural_position, height, weight, status, status_note, parent_name, parent_phone, emergency_contact_name, emergency_contact_phone, medical_notes, created_at',
+            )
+            .eq('team_id', activeTeam.id)
+            .order('jersey_number', { ascending: true, nullsFirst: false })
+            .order('last_name', { ascending: true })
+            .order('first_name', { ascending: true });
 
-      if (error) {
-        throw error;
-      }
+          if (error) {
+            throw error;
+          }
 
-      return (data ?? []) as Player[];
+          return (data ?? []) as Player[];
+        },
+        onCacheFallback: setCachedAt,
+        onNetworkSuccess: () => setCachedAt(null),
+      });
     },
     enabled: Boolean(activeTeam),
   });
+  const refetchPlayers = playersQuery.refetch;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTeam) {
+        void refetchPlayers();
+      }
+    }, [activeTeam?.id, refetchPlayers]),
+  );
 
   if (!activeTeam) {
     return (
@@ -88,8 +113,8 @@ export function RosterScreen({ navigation }: Props) {
     <AppScreen
       action={
         isReadOnlyRoster ? undefined : (
-          <Button
-            color={goalRed}
+          <AppButton
+            icon="person-add-outline"
             title={t('roster.addPlayerButton')}
             onPress={() => navigation.navigate('PlayerForm')}
           />
@@ -99,31 +124,31 @@ export function RosterScreen({ navigation }: Props) {
       title={t('roster.title')}
     >
       {playersQuery.isLoading ? (
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       ) : null}
       {playersQuery.error ? (
         <Text style={appScreenStyles.error}>{t('roster.loadError')}</Text>
       ) : null}
-      {!playersQuery.isLoading && players.length === 0 ? (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('roster.emptyTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('roster.emptyDescription')}
-          </Text>
-          {isReadOnlyRoster ? null : (
-            <Button
-              color={goalRed}
-              title={t('roster.addFirstPlayerButton')}
-              onPress={() => navigation.navigate('PlayerForm')}
-            />
-          )}
-        </View>
+      <OfflineNotice cachedAt={cachedAt} />
+      {!playersQuery.isLoading && !playersQuery.error && players.length === 0 ? (
+        <EmptyState
+          description={t('roster.emptyDescription')}
+          icon="people-outline"
+          title={t('roster.emptyTitle')}
+          action={
+            isReadOnlyRoster ? undefined : (
+              <AppButton
+                icon="person-add-outline"
+                title={t('roster.addFirstPlayerButton')}
+                onPress={() => navigation.navigate('PlayerForm')}
+              />
+            )
+          }
+        />
       ) : null}
       <View style={appScreenStyles.list}>
         {players.map((player) => (
-          <Pressable
+          <AnimatedPressable
             accessibilityRole="button"
             key={player.id}
             onPress={() =>
@@ -132,10 +157,7 @@ export function RosterScreen({ navigation }: Props) {
                 readOnly: isReadOnlyRoster,
               })
             }
-            style={({ pressed }) => [
-              appScreenStyles.card,
-              pressed && styles.pressed,
-            ]}
+            style={appScreenStyles.card}
           >
             <View style={appScreenStyles.row}>
               <View style={styles.identity}>
@@ -157,7 +179,7 @@ export function RosterScreen({ navigation }: Props) {
               </View>
               <StatusBadge status={player.status} />
             </View>
-          </Pressable>
+          </AnimatedPressable>
         ))}
       </View>
     </AppScreen>
@@ -185,8 +207,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   badgeText: {
     fontSize: 12,
@@ -196,7 +218,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   injuredBadge: {
     backgroundColor: colors.dangerSoft,
@@ -214,9 +236,6 @@ const styles = StyleSheet.create({
   nameBlock: {
     flex: 1,
     gap: 2,
-  },
-  pressed: {
-    backgroundColor: colors.cardPressed,
   },
   suspendedBadge: {
     backgroundColor: colors.dangerSoft,

@@ -15,6 +15,9 @@ export type AuthenticatedStackParamList = {
   PlayerForm: { playerId?: string; readOnly?: boolean } | undefined;
   GameForm: { gameId?: string; readOnly?: boolean } | undefined;
   LineupBuilder: { gameId: string; readOnly?: boolean };
+  DrillLibrary: undefined;
+  SchoolDrillLibrary: undefined;
+  DrillEditor: { drillId?: string; readOnly?: boolean } | undefined;
   PracticePlanDetail:
     | { practicePlanId?: string; readOnly?: boolean }
     | undefined;

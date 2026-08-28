@@ -54,7 +54,7 @@ export const appScreenStyles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
     gap: spacing.sm,
-    padding: 18,
+    padding: spacing.lg,
   },
   cardDescription: {
     color: slateGrey,
@@ -71,12 +71,12 @@ export const appScreenStyles = StyleSheet.create({
     lineHeight: 20,
   },
   list: {
-    gap: 12,
+    gap: spacing.md,
   },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'space-between',
   },
   meta: {
@@ -95,12 +95,12 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.rinkNavy,
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
   },
   content: {
     alignSelf: 'center',
-    gap: 16,
+    gap: spacing.lg,
     maxWidth: 560,
     width: '100%',
   },
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignSelf: 'center',
-    gap: 10,
-    marginBottom: 22,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
     maxWidth: 560,
     width: '100%',
   },
@@ -127,6 +127,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 32,
     fontWeight: '700',
-    letterSpacing: -0.8,
+    letterSpacing: 0,
   },
 });

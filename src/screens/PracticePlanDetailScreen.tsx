@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import {
   FormField,
@@ -13,7 +14,15 @@ import {
 } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { colors, goalRed, slateGrey } from '../theme/theme';
+import {
+  colors,
+  fontSizes,
+  goalRed,
+  radii,
+  sizes,
+  slateGrey,
+  spacing,
+} from '../theme/theme';
 
 type Props = NativeStackScreenProps<
   AuthenticatedStackParamList,
@@ -28,6 +37,28 @@ type SegmentForm = {
   notes: string;
 };
 
+type DrillOption = {
+  id: string;
+  team_id: string;
+  name: string;
+  description: string | null;
+  canvas_data: unknown;
+  source: 'team' | 'school';
+  teamName: string;
+};
+
+type DrillRow = {
+  id: string;
+  team_id: string;
+  name: string;
+  description: string | null;
+  canvas_data: unknown;
+};
+
+type SchoolDrillRow = DrillRow & {
+  teams: { name: string | null } | Array<{ name: string | null }> | null;
+};
+
 type PracticePlan = {
   id: string;
   team_id: string;
@@ -36,6 +67,8 @@ type PracticePlan = {
 };
 
 const DEFAULT_SEGMENT_DURATION = 10;
+const RINK_WIDTH = 1000;
+const RINK_HEIGHT = 500;
 
 export function PracticePlanDetailScreen({ navigation, route }: Props) {
   const { i18n, t } = useTranslation();
@@ -57,6 +90,9 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
   const [exportError, setExportError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [openDrillPickerOrder, setOpenDrillPickerOrder] = useState<number | null>(
+    null,
+  );
 
   const practiceQuery = useQuery({
     queryKey: ['practice-plan', practicePlanId],
@@ -80,6 +116,46 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     enabled: isEditing,
   });
 
+  const teamDrillsQuery = useQuery({
+    queryKey: ['practice-plan-team-drills', activeTeam?.id],
+    queryFn: async () => {
+      if (!activeTeam) {
+        throw new Error(t('practices.noActiveTeamTitle'));
+      }
+
+      const { data, error: loadError } = await supabase
+        .from('drills')
+        .select('id, team_id, name, description, canvas_data')
+        .eq('team_id', activeTeam.id)
+        .order('updated_at', { ascending: false });
+
+      if (loadError) {
+        throw loadError;
+      }
+
+      return (data ?? []) as DrillRow[];
+    },
+    enabled: Boolean(activeTeam),
+  });
+
+  const schoolDrillsQuery = useQuery({
+    queryKey: ['practice-plan-school-drills', activeTeam?.id],
+    queryFn: async () => {
+      const { data, error: loadError } = await supabase
+        .from('drills')
+        .select('id, team_id, name, description, canvas_data, teams ( name )')
+        .eq('is_published', true)
+        .order('updated_at', { ascending: false });
+
+      if (loadError) {
+        throw loadError;
+      }
+
+      return (data ?? []) as SchoolDrillRow[];
+    },
+    enabled: Boolean(activeTeam),
+  });
+
   useEffect(() => {
     const practice = practiceQuery.data;
 
@@ -97,10 +173,35 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     (sum, segment) => sum + safeDuration(segment.duration_minutes),
     0,
   );
+  const teamDrillOptions: DrillOption[] = (teamDrillsQuery.data ?? []).map(
+    (drill) => ({
+      ...drill,
+      source: 'team',
+      teamName: activeTeam?.name ?? '',
+    }),
+  );
+  const schoolDrillOptions: DrillOption[] = (schoolDrillsQuery.data ?? [])
+    .filter((drill) => drill.team_id !== activeTeam?.id)
+    .map((drill) => ({
+      id: drill.id,
+      team_id: drill.team_id,
+      name: drill.name,
+      description: drill.description,
+      canvas_data: drill.canvas_data,
+      source: 'school',
+      teamName: getSchoolDrillTeamName(drill),
+    }));
+  const drillOptions = [...teamDrillOptions, ...schoolDrillOptions];
+  const drillById = new Map(drillOptions.map((drill) => [drill.id, drill]));
 
   function updateSegment(
     order: number,
-    updates: Partial<Pick<SegmentForm, 'custom_title' | 'duration_minutes' | 'notes'>>,
+    updates: Partial<
+      Pick<
+        SegmentForm,
+        'drill_id' | 'custom_title' | 'duration_minutes' | 'notes'
+      >
+    >,
   ) {
     setSegments((currentSegments) =>
       currentSegments.map((segment) =>
@@ -127,6 +228,35 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
       return renumberSegments(
         nextSegments.length > 0 ? nextSegments : [makeBlankSegment(1)],
       );
+    });
+  }
+
+  function selectSegmentDrill(order: number, drill: DrillOption) {
+    setSegments((currentSegments) =>
+      currentSegments.map((segment) =>
+        segment.order === order
+          ? {
+              ...segment,
+              drill_id: drill.id,
+              custom_title: segment.custom_title.trim()
+                ? segment.custom_title
+                : drill.name,
+            }
+          : segment,
+      ),
+    );
+    setOpenDrillPickerOrder(null);
+  }
+
+  function clearSegmentDrill(order: number) {
+    updateSegment(order, { drill_id: null });
+    setOpenDrillPickerOrder(null);
+  }
+
+  function openSegmentDrill(drill: DrillOption) {
+    navigation.navigate('DrillEditor', {
+      drillId: drill.id,
+      readOnly: isReadOnly || drill.team_id !== activeTeam?.id,
     });
   }
 
@@ -162,7 +292,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     const normalizedSegments = renumberSegments(
       segments.map((segment) => ({
         order: segment.order,
-        drill_id: null,
+        drill_id: segment.drill_id,
         custom_title: segment.custom_title.trim(),
         duration_minutes: safeDuration(segment.duration_minutes),
         notes: segment.notes.trim(),
@@ -171,7 +301,9 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
 
     if (
       normalizedSegments.some(
-        (segment) => !segment.custom_title || segment.duration_minutes <= 0,
+        (segment) =>
+          (!segment.custom_title && !segment.drill_id) ||
+          segment.duration_minutes <= 0,
       )
     ) {
       setError(t('practiceDetail.requiredError'));
@@ -240,6 +372,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
       const html = buildPracticePlanExportHtml({
         date: practiceDate,
         locale: i18n.language,
+        drillById,
         segments: renumberSegments(segments),
         t,
         totalDuration,
@@ -294,6 +427,11 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
           {t('practiceDetail.loadError')}
         </Text>
       ) : null}
+      {teamDrillsQuery.error || schoolDrillsQuery.error ? (
+        <Text style={appScreenStyles.error}>
+          {t('practiceDetail.drillsLoadError')}
+        </Text>
+      ) : null}
       <View style={appScreenStyles.card}>
         <PracticeDateTimePicker
           calendarMonth={calendarMonth}
@@ -320,8 +458,8 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
             {t('practiceDetail.segmentsTitle')}
           </Text>
           {isReadOnly ? null : (
-            <Button
-              color={goalRed}
+            <AppButton
+              icon="add-circle-outline"
               title={t('practiceDetail.addSegmentButton')}
               onPress={addSegment}
             />
@@ -331,12 +469,25 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
           <SegmentEditor
             canMoveDown={index < segments.length - 1}
             canMoveUp={index > 0}
+            drillOptions={drillOptions}
+            isDrillPickerOpen={openDrillPickerOrder === segment.order}
             isReadOnly={isReadOnly}
             key={segment.order}
             segment={segment}
+            selectedDrill={
+              segment.drill_id ? drillById.get(segment.drill_id) ?? null : null
+            }
+            onClearDrill={() => clearSegmentDrill(segment.order)}
+            onOpenDrill={openSegmentDrill}
             onMoveDown={() => moveSegment(segment.order, 1)}
             onMoveUp={() => moveSegment(segment.order, -1)}
             onRemove={() => removeSegment(segment.order)}
+            onSelectDrill={(drill) => selectSegmentDrill(segment.order, drill)}
+            onToggleDrillPicker={() =>
+              setOpenDrillPickerOrder((currentOrder) =>
+                currentOrder === segment.order ? null : segment.order,
+              )
+            }
             onUpdate={(updates) => updateSegment(segment.order, updates)}
           />
         ))}
@@ -346,18 +497,18 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
       {isReadOnly ? (
         <Text style={appScreenStyles.note}>{t('common.readOnlyNotice')}</Text>
       ) : (
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={isSaving || practiceQuery.isLoading}
+          icon="save-outline"
           title={
             isSaving ? t('practiceDetail.saving') : t('practiceDetail.saveButton')
           }
           onPress={() => void handleSave()}
         />
       )}
-      <Button
-        color={goalRed}
+      <AppButton
         disabled={isSaving || isExporting || practiceQuery.isLoading}
+        icon="download-outline"
         title={
           isExporting
             ? t('practiceDetail.exporting')
@@ -417,20 +568,22 @@ function PracticeDateTimePicker({
         {formatSelectedDateTime(practiceDate, locale)}
       </Text>
       <View style={styles.monthHeader}>
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={disabled}
+          icon="chevron-back-outline"
           title={t('practiceDetail.previousMonthButton')}
           onPress={() => setCalendarMonth(addMonths(calendarMonth, -1))}
+          variant="secondary"
         />
         <Text style={styles.monthTitle}>
           {formatMonth(calendarMonth, locale)}
         </Text>
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={disabled}
+          icon="chevron-forward-outline"
           title={t('practiceDetail.nextMonthButton')}
           onPress={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+          variant="secondary"
         />
       </View>
       <View style={styles.weekdayGrid}>
@@ -470,20 +623,22 @@ function PracticeDateTimePicker({
       <View style={styles.timePicker}>
         <Text style={styles.selectorLabel}>{t('practiceDetail.timeLabel')}</Text>
         <View style={styles.timeSummaryRow}>
-          <Button
-            color={goalRed}
+          <AppButton
             disabled={disabled}
+            icon="chevron-down-outline"
             title={t('practiceDetail.hourDownButton')}
             onPress={() => selectHour((selectedHour + 23) % 24)}
+            variant="secondary"
           />
           <Text style={styles.timeSummary}>
             {formatTime(practiceDate, locale)}
           </Text>
-          <Button
-            color={goalRed}
+          <AppButton
             disabled={disabled}
+            icon="chevron-up-outline"
             title={t('practiceDetail.hourUpButton')}
             onPress={() => selectHour((selectedHour + 1) % 24)}
+            variant="secondary"
           />
         </View>
         <View style={styles.selectorOptions}>
@@ -519,31 +674,124 @@ function PracticeDateTimePicker({
 function SegmentEditor({
   canMoveDown,
   canMoveUp,
+  drillOptions,
+  isDrillPickerOpen,
   isReadOnly,
   segment,
+  selectedDrill,
+  onClearDrill,
+  onOpenDrill,
   onMoveDown,
   onMoveUp,
   onRemove,
+  onSelectDrill,
+  onToggleDrillPicker,
   onUpdate,
 }: {
   canMoveDown: boolean;
   canMoveUp: boolean;
+  drillOptions: DrillOption[];
+  isDrillPickerOpen: boolean;
   isReadOnly: boolean;
   segment: SegmentForm;
+  selectedDrill: DrillOption | null;
+  onClearDrill: () => void;
+  onOpenDrill: (drill: DrillOption) => void;
   onMoveDown: () => void;
   onMoveUp: () => void;
   onRemove: () => void;
+  onSelectDrill: (drill: DrillOption) => void;
+  onToggleDrillPicker: () => void;
   onUpdate: (
-    updates: Partial<Pick<SegmentForm, 'custom_title' | 'duration_minutes' | 'notes'>>,
+    updates: Partial<
+      Pick<
+        SegmentForm,
+        'drill_id' | 'custom_title' | 'duration_minutes' | 'notes'
+      >
+    >,
   ) => void;
 }) {
   const { t } = useTranslation();
+  const teamDrills = drillOptions.filter((drill) => drill.source === 'team');
+  const schoolDrills = drillOptions.filter((drill) => drill.source === 'school');
 
   return (
     <View style={styles.segmentCard}>
-      <Text style={styles.segmentTitle}>
-        {t('practiceDetail.segmentTitle', { number: segment.order })}
-      </Text>
+      <View style={styles.segmentHeader}>
+        <Text style={styles.segmentTitle}>
+          {t('practiceDetail.segmentTitle', { number: segment.order })}
+        </Text>
+        {selectedDrill ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onOpenDrill(selectedDrill)}
+            style={styles.drillBadge}
+          >
+            <Text style={styles.drillBadgeText}>
+              {t('practiceDetail.linkedDrillBadge')}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.textSegmentBadge}>
+            {t('practiceDetail.textSegmentBadge')}
+          </Text>
+        )}
+      </View>
+      {selectedDrill ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onOpenDrill(selectedDrill)}
+          style={styles.linkedDrillCard}
+        >
+          <Text style={styles.linkedDrillTitle}>{selectedDrill.name}</Text>
+          <Text style={styles.linkedDrillMeta}>
+            {selectedDrill.source === 'team'
+              ? t('practiceDetail.teamDrillSource')
+              : t('practiceDetail.schoolDrillSource', {
+                  teamName: selectedDrill.teamName,
+                })}
+          </Text>
+        </Pressable>
+      ) : null}
+      {isReadOnly ? null : (
+        <View style={styles.drillPickerControls}>
+          <AppButton
+            icon={selectedDrill ? 'swap-horizontal-outline' : 'link-outline'}
+            title={
+              selectedDrill
+                ? t('practiceDetail.changeDrillButton')
+                : t('practiceDetail.linkDrillButton')
+            }
+            onPress={onToggleDrillPicker}
+          />
+          {selectedDrill ? (
+            <AppButton
+              icon="close-outline"
+              title={t('practiceDetail.clearDrillButton')}
+              onPress={onClearDrill}
+              variant="secondary"
+            />
+          ) : null}
+        </View>
+      )}
+      {isDrillPickerOpen && !isReadOnly ? (
+        <View style={styles.drillPickerPanel}>
+          <DrillPickerSection
+            drills={teamDrills}
+            emptyLabel={t('practiceDetail.emptyTeamDrills')}
+            selectedDrillId={segment.drill_id}
+            title={t('practiceDetail.teamDrillsTitle')}
+            onSelectDrill={onSelectDrill}
+          />
+          <DrillPickerSection
+            drills={schoolDrills}
+            emptyLabel={t('practiceDetail.emptySchoolDrills')}
+            selectedDrillId={segment.drill_id}
+            title={t('practiceDetail.schoolDrillsTitle')}
+            onSelectDrill={onSelectDrill}
+          />
+        </View>
+      ) : null}
       <FormField
         autoCapitalize="sentences"
         label={t('practiceDetail.segmentNameLabel')}
@@ -574,20 +822,22 @@ function SegmentEditor({
       />
       {isReadOnly ? null : (
       <View style={styles.segmentActions}>
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={!canMoveUp}
+          icon="arrow-up-outline"
           title={t('practiceDetail.moveSegmentUpButton')}
           onPress={onMoveUp}
+          variant="secondary"
         />
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={!canMoveDown}
+          icon="arrow-down-outline"
           title={t('practiceDetail.moveSegmentDownButton')}
           onPress={onMoveDown}
+          variant="secondary"
         />
-        <Button
-          color={goalRed}
+        <AppButton
+          icon="trash-outline"
           title={t('practiceDetail.removeSegmentButton')}
           onPress={onRemove}
         />
@@ -597,27 +847,83 @@ function SegmentEditor({
   );
 }
 
+function DrillPickerSection({
+  drills,
+  emptyLabel,
+  selectedDrillId,
+  title,
+  onSelectDrill,
+}: {
+  drills: DrillOption[];
+  emptyLabel: string;
+  selectedDrillId: string | null;
+  title: string;
+  onSelectDrill: (drill: DrillOption) => void;
+}) {
+  return (
+    <View style={styles.drillPickerSection}>
+      <Text style={styles.drillPickerSectionTitle}>{title}</Text>
+      {drills.length === 0 ? (
+        <Text style={styles.drillPickerEmpty}>{emptyLabel}</Text>
+      ) : null}
+      {drills.map((drill) => {
+        const isSelected = drill.id === selectedDrillId;
+
+        return (
+          <Pressable
+            accessibilityRole="button"
+            key={drill.id}
+            onPress={() => onSelectDrill(drill)}
+            style={[
+              styles.drillPickerOption,
+              isSelected && styles.drillPickerOptionSelected,
+            ]}
+          >
+            <Text style={styles.drillPickerOptionTitle}>{drill.name}</Text>
+            <Text style={styles.drillPickerOptionMeta}>
+              {drill.source === 'team' ? drill.teamName : drill.teamName}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function buildPracticePlanExportHtml({
   date,
+  drillById,
   locale,
   segments,
   t,
   totalDuration,
 }: {
   date: Date;
+  drillById: Map<string, DrillOption>;
   locale: string;
   segments: SegmentForm[];
   t: (key: string, values?: Record<string, unknown>) => string;
   totalDuration: number;
 }) {
   const rows = segments
-    .map(
-      (segment) => `
+    .map((segment) => {
+      const linkedDrill = segment.drill_id
+        ? drillById.get(segment.drill_id)
+        : undefined;
+      const segmentTitle =
+        segment.custom_title ||
+        linkedDrill?.name ||
+        t('practiceDetail.segmentFallback', { number: segment.order });
+      const drillDiagram = linkedDrill
+        ? buildDrillExportSvg(linkedDrill.canvas_data)
+        : '';
+
+      return `
         <li>
           <strong>${escapeHtml(
             t('practiceDetail.exportSegmentTitle', {
               number: segment.order,
-              title: segment.custom_title || t('practiceDetail.segmentFallback', { number: segment.order }),
+              title: segmentTitle,
             }),
           )}</strong>
           <span>${escapeHtml(
@@ -626,13 +932,28 @@ function buildPracticePlanExportHtml({
             }),
           )}</span>
           ${
+            linkedDrill
+              ? `<p class="drill-meta">${escapeHtml(
+                  t('practiceDetail.exportLinkedDrill', {
+                    name: linkedDrill.name,
+                    source:
+                      linkedDrill.source === 'team'
+                        ? t('practiceDetail.teamDrillSource')
+                        : t('practiceDetail.schoolDrillSource', {
+                            teamName: linkedDrill.teamName,
+                          }),
+                  }),
+                )}</p>${drillDiagram}`
+              : `<p class="badge">${escapeHtml(t('practiceDetail.textSegmentBadge'))}</p>`
+          }
+          ${
             segment.notes
               ? `<p>${escapeHtml(segment.notes)}</p>`
               : `<p class="muted">${escapeHtml(t('practiceDetail.exportNoNotes'))}</p>`
           }
         </li>
-      `,
-    )
+      `;
+    })
     .join('');
 
   return `
@@ -659,6 +980,20 @@ function buildPracticePlanExportHtml({
           strong { display: block; font-size: 16px; }
           span { color: ${slateGrey}; display: block; font-size: 13px; margin-top: 2px; }
           p { margin: 8px 0 0; white-space: pre-wrap; }
+          .badge, .drill-meta {
+            color: ${goalRed};
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+          }
+          .rink-svg {
+            border: 1px solid #d5e4ee;
+            border-radius: 10px;
+            display: block;
+            margin-top: 10px;
+            max-width: 100%;
+            width: 520px;
+          }
           .muted { color: ${slateGrey}; }
         </style>
       </head>
@@ -689,7 +1024,7 @@ function normalizeSegments(value: unknown): SegmentForm[] {
     .filter(isRecord)
     .map((segment, index) => ({
       order: numberValue(segment.order) ?? index + 1,
-      drill_id: null,
+      drill_id: stringValue(segment.drill_id) || null,
       custom_title: stringValue(segment.custom_title),
       duration_minutes:
         numberValue(segment.duration_minutes) ?? DEFAULT_SEGMENT_DURATION,
@@ -705,11 +1040,185 @@ function normalizeSegments(value: unknown): SegmentForm[] {
 function renumberSegments(segments: SegmentForm[]): SegmentForm[] {
   return segments.map((segment, index) => ({
     order: index + 1,
-    drill_id: null,
+    drill_id: segment.drill_id,
     custom_title: segment.custom_title,
     duration_minutes: safeDuration(segment.duration_minutes),
     notes: segment.notes,
   }));
+}
+
+function buildDrillExportSvg(canvasData: unknown) {
+  const objects = Array.isArray(canvasData) ? canvasData.filter(isRecord) : [];
+  const renderedObjects = objects.map(renderDrillObjectSvg).join('');
+
+  return `
+    <svg class="rink-svg" viewBox="0 0 ${RINK_WIDTH} ${RINK_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <rect fill="#f7fbff" height="${RINK_HEIGHT - 18}" rx="70" stroke="#d5e4ee" stroke-width="10" width="${RINK_WIDTH - 18}" x="9" y="9" />
+      <line stroke="#c63535" stroke-width="8" x1="500" x2="500" y1="16" y2="484" />
+      <circle cx="500" cy="250" fill="none" r="72" stroke="#b9d0df" stroke-width="5" />
+      <circle cx="500" cy="250" fill="#c63535" r="8" />
+      <line stroke="#2f68ad" stroke-width="10" x1="330" x2="330" y1="16" y2="484" />
+      <line stroke="#2f68ad" stroke-width="10" x1="670" x2="670" y1="16" y2="484" />
+      <line stroke="#c63535" stroke-width="5" x1="115" x2="115" y1="16" y2="484" />
+      <line stroke="#c63535" stroke-width="5" x1="885" x2="885" y1="16" y2="484" />
+      <ellipse cx="210" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <ellipse cx="210" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <ellipse cx="790" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <ellipse cx="790" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <circle cx="210" cy="155" fill="#c63535" r="6" />
+      <circle cx="210" cy="345" fill="#c63535" r="6" />
+      <circle cx="790" cy="155" fill="#c63535" r="6" />
+      <circle cx="790" cy="345" fill="#c63535" r="6" />
+      <rect fill="none" height="86" rx="14" stroke="#8db0c7" stroke-width="5" width="54" x="36" y="207" />
+      <rect fill="none" height="86" rx="14" stroke="#8db0c7" stroke-width="5" width="54" x="910" y="207" />
+      <defs>
+        <marker id="arrow" markerHeight="8" markerWidth="8" orient="auto-start-reverse" refX="7" refY="4">
+          <path d="M 0 0 L 8 4 L 0 8 z" fill="context-stroke" />
+        </marker>
+      </defs>
+      ${renderedObjects}
+    </svg>
+  `;
+}
+
+function renderDrillObjectSvg(object: Record<string, unknown>) {
+  const type = stringValue(object.type);
+  const color = escapeSvgColor(stringValue(object.color) || goalRed);
+
+  if (type === 'skate_path' || type === 'pass_line') {
+    const points = normalizeSvgPoints(object.points);
+
+    if (points.length < 2) {
+      return '';
+    }
+
+    const pathData = makeSvgPathData(points);
+    const dash = type === 'pass_line' ? ' stroke-dasharray="18 12"' : '';
+    const ticks =
+      type === 'skate_path' && stringValue(object.style) === 'backward'
+        ? makeSvgBackwardTicks(points, color)
+        : '';
+
+    return `<path d="${pathData}" fill="none" marker-end="url(#arrow)" stroke="${color}"${dash} stroke-linecap="round" stroke-linejoin="round" stroke-width="8" />${ticks}`;
+  }
+
+  if (type === 'shaded_zone') {
+    const points = normalizeSvgPoints(object.points);
+
+    if (points.length < 3) {
+      return '';
+    }
+
+    const opacity = numberValue(object.opacity) ?? 0.28;
+    return `<polygon fill="${color}" fill-opacity="${clampNumber(opacity, 0.05, 0.8)}" points="${pointsToSvgValue(points)}" stroke="${color}" stroke-linejoin="round" stroke-width="3" />`;
+  }
+
+  const x = numberValue(object.x);
+  const y = numberValue(object.y);
+
+  if (x === null || y === null) {
+    return '';
+  }
+
+  if (type === 'player_token') {
+    return `<circle cx="${x}" cy="${y}" fill="${color}" r="20" stroke="#071723" stroke-width="3" /><text fill="#ffffff" font-size="22" font-weight="900" text-anchor="middle" x="${x}" y="${y + 8}">${escapeHtml(stringValue(object.label) || 'F')}</text>`;
+  }
+
+  if (type === 'puck') {
+    return `<circle cx="${x}" cy="${y}" fill="${color}" r="8" stroke="#000000" stroke-width="2" />`;
+  }
+
+  if (type === 'cone') {
+    return `<path d="M ${x} ${y - 18} L ${x + 16} ${y + 16} L ${x - 16} ${y + 16} Z" fill="${color}" stroke="#8a5a0a" stroke-linejoin="round" stroke-width="2" /><line stroke="#ffffff" stroke-width="3" x1="${x - 8}" x2="${x + 8}" y1="${y + 2}" y2="${y + 2}" />`;
+  }
+
+  if (type === 'net') {
+    return `<path d="M ${x - 22} ${y - 12} L ${x + 22} ${y - 12} L ${x + 26} ${y + 16} L ${x - 26} ${y + 16} Z" fill="#ffffff" stroke="${color}" stroke-linejoin="round" stroke-width="4" /><line stroke="#9db2c1" stroke-width="2" x1="${x - 16}" x2="${x + 16}" y1="${y}" y2="${y}" /><rect fill="${color}" height="7" rx="3" width="44" x="${x - 22}" y="${y - 18}" />`;
+  }
+
+  if (type === 'text') {
+    return `<text fill="${color}" font-size="22" font-weight="900" text-anchor="middle" x="${x}" y="${y}">${escapeHtml(stringValue(object.text))}</text>`;
+  }
+
+  return '';
+}
+
+function normalizeSvgPoints(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((point): Array<{ x: number; y: number }> => {
+    if (!isRecord(point)) {
+      return [];
+    }
+
+    const x = numberValue(point.x);
+    const y = numberValue(point.y);
+
+    if (x === null || y === null) {
+      return [];
+    }
+
+    return [
+      {
+        x: clampNumber(x, 0, RINK_WIDTH),
+        y: clampNumber(y, 0, RINK_HEIGHT),
+      },
+    ];
+  });
+}
+
+function makeSvgPathData(points: Array<{ x: number; y: number }>) {
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
+
+  let pathData = `M ${points[0].x} ${points[0].y}`;
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const currentPoint = points[index];
+    const nextPoint = points[index + 1];
+    const midPoint = {
+      x: (currentPoint.x + nextPoint.x) / 2,
+      y: (currentPoint.y + nextPoint.y) / 2,
+    };
+    pathData += ` Q ${currentPoint.x} ${currentPoint.y} ${midPoint.x} ${midPoint.y}`;
+  }
+
+  const lastPoint = points[points.length - 1];
+  return `${pathData} L ${lastPoint.x} ${lastPoint.y}`;
+}
+
+function makeSvgBackwardTicks(points: Array<{ x: number; y: number }>, color: string) {
+  return points
+    .slice(1)
+    .filter((_point, index) => index % 2 === 0)
+    .map((point, index) => {
+      const previousPoint = points[index];
+      const distance = Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y);
+
+      if (distance < 1) {
+        return '';
+      }
+
+      const midX = (previousPoint.x + point.x) / 2;
+      const midY = (previousPoint.y + point.y) / 2;
+      const normalX = -((point.y - previousPoint.y) / distance);
+      const normalY = (point.x - previousPoint.x) / distance;
+      const halfTick = 11;
+
+      return `<line stroke="${color}" stroke-linecap="round" stroke-width="5" x1="${midX - normalX * halfTick}" x2="${midX + normalX * halfTick}" y1="${midY - normalY * halfTick}" y2="${midY + normalY * halfTick}" />`;
+    })
+    .join('');
+}
+
+function pointsToSvgValue(points: Array<{ x: number; y: number }>) {
+  return points.map((point) => `${point.x},${point.y}`).join(' ');
+}
+
+function escapeSvgColor(value: string) {
+  return /^#[0-9a-fA-F]{3,8}$/.test(value) ? value : goalRed;
 }
 
 function safeDuration(value: number) {
@@ -801,7 +1310,28 @@ function stringValue(value: unknown) {
 }
 
 function numberValue(value: unknown) {
-  return typeof value === 'number' ? value : null;
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsedValue = Number(value);
+    return Number.isNaN(parsedValue) ? null : parsedValue;
+  }
+
+  return null;
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getSchoolDrillTeamName(drill: SchoolDrillRow) {
+  const team = Array.isArray(drill.teams)
+    ? drill.teams[0] ?? null
+    : drill.teams;
+
+  return team?.name ?? '';
 }
 
 function escapeHtml(value: string) {
@@ -815,66 +1345,152 @@ function escapeHtml(value: string) {
 
 const styles = StyleSheet.create({
   datePicker: {
-    gap: 10,
+    gap: spacing.control,
   },
   dateSummary: {
     color: colors.textPrimary,
-    fontSize: 15,
+    fontSize: fontSizes.base,
     fontWeight: '700',
   },
   dayButton: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radii.md,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 42,
+    minHeight: sizes.touch,
     width: '13%',
   },
   dayButtonText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '700',
   },
   dayGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 5,
+    gap: spacing.formGap,
+  },
+  drillBadge: {
+    backgroundColor: colors.cardPressed,
+    borderColor: goalRed,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    paddingHorizontal: spacing.control,
+    paddingVertical: spacing.formGap,
+  },
+  drillBadgeText: {
+    color: goalRed,
+    fontSize: fontSizes.tiny,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  drillPickerControls: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  drillPickerEmpty: {
+    color: slateGrey,
+    fontSize: fontSizes.sm,
+  },
+  drillPickerOption: {
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.xxs,
+    padding: spacing.control,
+  },
+  drillPickerOptionMeta: {
+    color: slateGrey,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+  },
+  drillPickerOptionSelected: {
+    borderColor: goalRed,
+  },
+  drillPickerOptionTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.md,
+    fontWeight: '800',
+  },
+  drillPickerPanel: {
+    borderColor: colors.border,
+    borderRadius: radii.card,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.control,
+  },
+  drillPickerSection: {
+    gap: spacing.sm,
+  },
+  drillPickerSectionTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.sm,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  linkedDrillCard: {
+    backgroundColor: colors.cardPressed,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.tight,
+    padding: spacing.control,
+  },
+  linkedDrillMeta: {
+    color: slateGrey,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+  },
+  linkedDrillTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.base,
+    fontWeight: '900',
   },
   monthHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
     justifyContent: 'space-between',
   },
   monthTitle: {
     color: colors.textPrimary,
     flex: 1,
-    fontSize: 16,
+    fontSize: fontSizes.lg,
     fontWeight: '800',
     textAlign: 'center',
     textTransform: 'capitalize',
   },
   multiline: {
-    minHeight: 88,
-    paddingTop: 12,
+    minHeight: sizes.practiceMultiline,
+    paddingTop: spacing.md,
     textAlignVertical: 'top',
   },
   segmentActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   segmentCard: {
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: radii.card,
     borderWidth: 1,
-    gap: 12,
-    padding: 12,
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  segmentHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
   },
   segmentTitle: {
     color: colors.textPrimary,
-    fontSize: 16,
+    flexShrink: 1,
+    fontSize: fontSizes.lg,
     fontWeight: '800',
   },
   selected: {
@@ -886,66 +1502,72 @@ const styles = StyleSheet.create({
   },
   selectorLabel: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '600',
   },
   selectorOption: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.control,
   },
   selectorOptionText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '700',
   },
   selectorOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   timePicker: {
-    gap: 8,
-    marginTop: 4,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   timeSummary: {
     color: colors.textPrimary,
-    fontSize: 20,
+    fontSize: fontSizes.displaySm,
     fontWeight: '800',
   },
   timeSummaryRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'center',
+  },
+  textSegmentBadge: {
+    color: slateGrey,
+    fontSize: fontSizes.tiny,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   totalCard: {
     backgroundColor: colors.cardPressed,
-    borderRadius: 12,
-    gap: 4,
-    padding: 12,
+    borderRadius: radii.card,
+    gap: spacing.xs,
+    padding: spacing.md,
   },
   totalLabel: {
     color: slateGrey,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   totalValue: {
     color: colors.textPrimary,
-    fontSize: 20,
+    fontSize: fontSizes.displaySm,
     fontWeight: '900',
   },
   weekdayGrid: {
     flexDirection: 'row',
-    gap: 5,
+    gap: spacing.formGap,
   },
   weekdayLabel: {
     color: slateGrey,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
     fontWeight: '800',
     textAlign: 'center',
     textTransform: 'uppercase',

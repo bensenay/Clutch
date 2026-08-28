@@ -1,13 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingState } from '../components/LoadingState';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { goalRed } from '../theme/theme';
 
 type Props = NativeStackScreenProps<
   AuthenticatedStackParamList,
@@ -85,7 +87,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
   if (profileQuery.isLoading) {
     return (
       <AppScreen title={t('directorAllTeams.title')}>
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       </AppScreen>
     );
   }
@@ -105,7 +107,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
       title={t('directorAllTeams.title')}
     >
       {teamsQuery.isLoading ? (
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       ) : null}
       {teamsQuery.error ? (
         <Text style={appScreenStyles.error}>
@@ -113,14 +115,11 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
         </Text>
       ) : null}
       {!teamsQuery.isLoading && teamsQuery.data?.length === 0 ? (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('directorAllTeams.emptyTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('directorAllTeams.emptyDescription')}
-          </Text>
-        </View>
+        <EmptyState
+          description={t('directorAllTeams.emptyDescription')}
+          icon="school-outline"
+          title={t('directorAllTeams.emptyTitle')}
+        />
       ) : null}
       <View style={appScreenStyles.list}>
         {(teamsQuery.data ?? []).map((team) => (
@@ -132,16 +131,16 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
                 season: team.season || t('common.notSet'),
               })}
             </Text>
-            <Button
-              color={goalRed}
+            <AppButton
+              icon="people-outline"
               title={t('directorAllTeams.viewRosterButton')}
               onPress={() => {
                 setActiveTeam(team);
                 navigation.navigate('MainTabs', { screen: 'RosterTab' });
               }}
             />
-            <Button
-              color={goalRed}
+            <AppButton
+              icon="calendar-outline"
               title={t('directorAllTeams.viewGamesButton')}
               onPress={() => {
                 setActiveTeam(team);

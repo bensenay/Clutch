@@ -17,6 +17,7 @@ import {
   goalRed,
   radii,
   slateGrey,
+  spacing,
 } from '../theme/theme';
 
 type AuthScreenProps = PropsWithChildren<{
@@ -123,12 +124,12 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
   },
   content: {
     alignSelf: 'center',
-    gap: 12,
+    gap: spacing.md,
     maxWidth: 480,
     width: '100%',
   },
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 32,
     fontWeight: '700',
-    letterSpacing: -0.8,
+    letterSpacing: 0,
   },
   description: {
     color: colors.frostSteel,
@@ -151,11 +152,11 @@ const styles = StyleSheet.create({
     lineHeight: 23,
   },
   form: {
-    gap: 16,
-    marginTop: 12,
+    gap: spacing.lg,
+    marginTop: spacing.md,
   },
   field: {
-    gap: 7,
+    gap: spacing.xs,
   },
   label: {
     color: colors.frostSteel,
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 16,
     minHeight: 50,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.md,
   },
   footerAction: {
     color: colors.hornAmber,
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
   },
   footerText: {
     color: colors.frostSteel,

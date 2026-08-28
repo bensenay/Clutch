@@ -3,17 +3,32 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import {
   FormField,
   authStyles,
 } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
+import {
+  isLikelyNetworkError,
+  makeTeamCacheKey,
+  readCache,
+  updateCachedListItem,
+} from '../offline/cache';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { colors, goalRed, slateGrey } from '../theme/theme';
+import {
+  colors,
+  fontSizes,
+  goalRed,
+  radii,
+  sizes,
+  slateGrey,
+  spacing,
+} from '../theme/theme';
 import type { Game } from './GameListScreen';
 import type { Player } from './RosterScreen';
 
@@ -95,19 +110,40 @@ export function GameFormScreen({ navigation, route }: Props) {
         throw new Error(t('gameForm.missingGameError'));
       }
 
-      const { data, error: loadError } = await supabase
-        .from('games')
-        .select(
-          'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
-        )
-        .eq('id', gameId)
-        .single();
+      try {
+        const { data, error: loadError } = await supabase
+          .from('games')
+          .select(
+            'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
+          )
+          .eq('id', gameId)
+          .single();
 
-      if (loadError) {
-        throw loadError;
+        if (loadError) {
+          throw loadError;
+        }
+
+        const game = data as Game;
+
+        if (activeTeam) {
+          await updateCachedListItem(makeTeamCacheKey('games', activeTeam.id), game);
+        }
+
+        return game;
+      } catch (error) {
+        if (activeTeam && isLikelyNetworkError(error)) {
+          const cachedGames = await readCache<Game[]>(
+            makeTeamCacheKey('games', activeTeam.id),
+          );
+          const cachedGame = cachedGames?.data.find((game) => game.id === gameId);
+
+          if (cachedGame) {
+            return cachedGame;
+          }
+        }
+
+        throw error;
       }
-
-      return data as Game;
     },
     enabled: isEditing,
   });
@@ -244,7 +280,11 @@ export function GameFormScreen({ navigation, route }: Props) {
       : await supabase.from('games').insert(payload).select('id').single();
 
     if (saveResult.error) {
-      setError(t('gameForm.saveError'));
+      setError(
+        isLikelyNetworkError(saveResult.error)
+          ? t('offline.writeBlocked')
+          : t('gameForm.saveError'),
+      );
       setIsSubmitting(false);
       return;
     }
@@ -418,9 +458,9 @@ export function GameFormScreen({ navigation, route }: Props) {
         {isReadOnly ? (
           <Text style={appScreenStyles.note}>{t('common.readOnlyNotice')}</Text>
         ) : (
-          <Button
-            color={goalRed}
+          <AppButton
             disabled={isSubmitting || gameQuery.isLoading}
+            icon="save-outline"
             title={
               isSubmitting ? t('gameForm.saving') : t('gameForm.saveButton')
             }
@@ -429,9 +469,9 @@ export function GameFormScreen({ navigation, route }: Props) {
         )}
         {gameId ? (
           <>
-            <Button
-              color={goalRed}
+            <AppButton
               disabled={isSubmitting || gameQuery.isLoading || isExporting}
+              icon="list-outline"
               title={
                 isReadOnly
                   ? t('gameForm.viewLineupButton')
@@ -444,9 +484,9 @@ export function GameFormScreen({ navigation, route }: Props) {
                 })
               }
             />
-            <Button
-              color={goalRed}
+            <AppButton
               disabled={isSubmitting || gameQuery.isLoading || isExporting}
+              icon="download-outline"
               title={
                 isExporting
                   ? t('gameForm.exporting')
@@ -512,22 +552,24 @@ function GameDateTimePicker({
           : t('gameForm.dateEmpty')}
       </Text>
       <View style={styles.monthHeader}>
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={disabled}
+          icon="chevron-back-outline"
           title={t('gameForm.previousMonthButton')}
           onPress={() =>
             setCalendarMonth(addMonths(calendarMonth, -1))
           }
+          variant="secondary"
         />
         <Text style={styles.monthTitle}>
           {formatMonth(calendarMonth, locale)}
         </Text>
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={disabled}
+          icon="chevron-forward-outline"
           title={t('gameForm.nextMonthButton')}
           onPress={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+          variant="secondary"
         />
       </View>
       <View style={styles.weekdayGrid}>
@@ -567,20 +609,22 @@ function GameDateTimePicker({
       <View style={styles.timePicker}>
         <Text style={styles.selectorLabel}>{t('gameForm.timeLabel')}</Text>
         <View style={styles.timeSummaryRow}>
-          <Button
-            color={goalRed}
+          <AppButton
             disabled={disabled}
+            icon="chevron-down-outline"
             title={t('gameForm.hourDownButton')}
             onPress={() => selectHour((selectedHour + 23) % 24)}
+            variant="secondary"
           />
           <Text style={styles.timeSummary}>
             {formatTime(displayDate, locale)}
           </Text>
-          <Button
-            color={goalRed}
+          <AppButton
             disabled={disabled}
+            icon="chevron-up-outline"
             title={t('gameForm.hourUpButton')}
             onPress={() => selectHour((selectedHour + 1) % 24)}
+            variant="secondary"
           />
         </View>
         <View style={styles.selectorOptions}>
@@ -1105,49 +1149,49 @@ function toDateKey(date: Date) {
 
 const styles = StyleSheet.create({
   datePicker: {
-    gap: 10,
+    gap: spacing.control,
   },
   dateSummary: {
     color: colors.textPrimary,
-    fontSize: 15,
+    fontSize: fontSizes.base,
     fontWeight: '700',
   },
   dayButton: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radii.md,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 42,
+    minHeight: sizes.touch,
     width: '13%',
   },
   dayButtonText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '700',
   },
   dayGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 5,
+    gap: spacing.formGap,
   },
   monthHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
     justifyContent: 'space-between',
   },
   monthTitle: {
     color: colors.textPrimary,
     flex: 1,
-    fontSize: 16,
+    fontSize: fontSizes.lg,
     fontWeight: '800',
     textAlign: 'center',
     textTransform: 'capitalize',
   },
   multiline: {
-    minHeight: 110,
-    paddingTop: 12,
+    minHeight: sizes.gameMultiline,
+    paddingTop: spacing.md,
     textAlignVertical: 'top',
   },
   selected: {
@@ -1158,53 +1202,53 @@ const styles = StyleSheet.create({
     color: goalRed,
   },
   selectorGroup: {
-    gap: 7,
+    gap: spacing.fieldGap,
   },
   selectorLabel: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '600',
   },
   selectorOption: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.control,
   },
   selectorOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   selectorOptionText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '700',
   },
   timePicker: {
-    gap: 8,
-    marginTop: 4,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   timeSummary: {
     color: colors.textPrimary,
-    fontSize: 20,
+    fontSize: fontSizes.displaySm,
     fontWeight: '800',
   },
   timeSummaryRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'center',
   },
   weekdayGrid: {
     flexDirection: 'row',
-    gap: 5,
+    gap: spacing.formGap,
   },
   weekdayLabel: {
     color: slateGrey,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
     fontWeight: '800',
     textAlign: 'center',
     textTransform: 'uppercase',

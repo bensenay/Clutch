@@ -3,12 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { AuthenticatedTabs } from './AuthenticatedTabs';
 import { DirectorAllTeamsScreen } from '../screens/DirectorAllTeamsScreen';
 import { DirectorAssistantCoachesScreen } from '../screens/DirectorAssistantCoachesScreen';
+import { DrillEditorScreen } from '../screens/DrillEditorScreen';
+import { DrillLibraryScreen } from '../screens/DrillLibraryScreen';
 import { GameFormScreen } from '../screens/GameFormScreen';
 import { LineupBuilderScreen } from '../screens/LineupBuilderScreen';
 import { DirectorSettingsScreen } from '../screens/DirectorSettingsScreen';
 import { PlayerFormScreen } from '../screens/PlayerFormScreen';
 import { PracticePlanDetailScreen } from '../screens/PracticePlanDetailScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { SchoolDrillLibraryScreen } from '../screens/SchoolDrillLibraryScreen';
 import { fonts, iceWhite, rinkNavy } from '../theme/theme';
 import type { AuthenticatedStackParamList } from './types';
 
@@ -21,6 +24,7 @@ export function AuthenticatedStack() {
     <Stack.Navigator
       initialRouteName="MainTabs"
       screenOptions={{
+        animation: 'slide_from_right',
         contentStyle: { backgroundColor: rinkNavy },
         headerBackTitle: t('common.back'),
         headerShadowVisible: false,
@@ -76,6 +80,25 @@ export function AuthenticatedStack() {
         component={LineupBuilderScreen}
         name="LineupBuilder"
         options={{ title: t('lineup.title') }}
+      />
+      <Stack.Screen
+        component={DrillLibraryScreen}
+        name="DrillLibrary"
+        options={{ title: t('drillLibrary.headerTitle') }}
+      />
+      <Stack.Screen
+        component={SchoolDrillLibraryScreen}
+        name="SchoolDrillLibrary"
+        options={{ title: t('schoolDrillLibrary.headerTitle') }}
+      />
+      <Stack.Screen
+        component={DrillEditorScreen}
+        name="DrillEditor"
+        options={({ route }) => ({
+          title: route.params?.drillId
+            ? t('drillEditor.editHeaderTitle')
+            : t('drillEditor.addHeaderTitle'),
+        })}
       />
       <Stack.Screen
         component={PracticePlanDetailScreen}

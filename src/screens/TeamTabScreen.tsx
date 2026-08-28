@@ -3,12 +3,16 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { Button, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
+import { AnimatedPressable } from '../components/AnimatedPressable';
+import { AppButton } from '../components/AppButton';
 import { AssistantAssignmentSchedule } from '../components/AssistantAssignmentSchedule';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingState } from '../components/LoadingState';
 import type {
   AuthenticatedStackParamList,
   AuthenticatedTabParamList,
@@ -17,7 +21,7 @@ import {
   type ActiveTeam,
   useActiveTeam,
 } from '../teams/ActiveTeamContext';
-import { colors, fonts, goalRed, slateGrey } from '../theme/theme';
+import { colors, fonts, goalRed, slateGrey, spacing } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 
 type Props = CompositeScreenProps<
@@ -210,7 +214,7 @@ export function TeamTabScreen({ navigation }: Props) {
       title={t('teamTab.title')}
     >
       {isLoading ? (
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       ) : null}
       {hasError ? (
         <Text style={appScreenStyles.error}>{t('teamTab.loadError')}</Text>
@@ -254,7 +258,7 @@ export function TeamTabScreen({ navigation }: Props) {
           </Text>
           <View style={styles.list}>
             {teams.map((team) => (
-              <Pressable
+              <AnimatedPressable
                 accessibilityRole="button"
                 key={team.id}
                 onPress={() => setActiveTeam(team)}
@@ -271,7 +275,7 @@ export function TeamTabScreen({ navigation }: Props) {
                 >
                   {team.name}
                 </Text>
-              </Pressable>
+              </AnimatedPressable>
             ))}
           </View>
         </View>
@@ -295,14 +299,11 @@ export function TeamTabScreen({ navigation }: Props) {
       teams.length === 0 &&
       assistantCoachTeams.length === 0 ? (
         profile?.role === 'coach' ? null : (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('teamTab.emptyTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('teamTab.emptyDescription')}
-          </Text>
-        </View>
+          <EmptyState
+            description={t('teamTab.emptyDescription')}
+            icon="shield-outline"
+            title={t('teamTab.emptyTitle')}
+          />
         )
       ) : null}
     </AppScreen>
@@ -432,8 +433,8 @@ function TeamDashboard({
                 ? t('games.homeBadge')
                 : t('games.awayBadge')}
             </Text>
-            <Button
-              color={goalRed}
+            <AppButton
+              icon="open-outline"
               title={t('teamTab.openNextGameButton')}
               onPress={() => onOpenGame(nextGame.id)}
             />
@@ -491,8 +492,8 @@ function AssistantTeamRosterAccess({
                   {t('teamTab.assistantTeamActiveNotice')}
                 </Text>
               ) : null}
-              <Button
-                color={goalRed}
+              <AppButton
+                icon="people-outline"
                 title={t('teamTab.openReadOnlyRosterButton')}
                 onPress={() => {
                   onSelectTeam(team);
@@ -531,20 +532,20 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 10,
-    padding: 12,
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   dashboardHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 14,
+    gap: spacing.md,
   },
   dashboardTitleBlock: {
     flex: 1,
-    gap: 4,
+    gap: spacing.xs,
   },
   list: {
-    gap: 10,
+    gap: spacing.sm,
   },
   logoFrame: {
     alignItems: 'center',
@@ -571,8 +572,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
-    gap: 6,
-    padding: 12,
+    gap: spacing.xs,
+    padding: spacing.md,
   },
   nextGameOpponent: {
     color: colors.textPrimary,
@@ -589,8 +590,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardPressed,
     borderRadius: 10,
     flex: 1,
-    gap: 4,
-    padding: 12,
+    gap: spacing.xs,
+    padding: spacing.md,
   },
   statLabel: {
     color: slateGrey,
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
   },
   statValue: {
     color: colors.textPrimary,
@@ -617,6 +618,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
-    padding: 14,
+    padding: spacing.md,
   },
 });

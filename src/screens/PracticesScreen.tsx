@@ -2,16 +2,20 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Pressable, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { AnimatedPressable } from '../components/AnimatedPressable';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingState } from '../components/LoadingState';
 import type {
   AuthenticatedStackParamList,
   AuthenticatedTabParamList,
 } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { goalRed } from '../theme/theme';
+import { spacing } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 
 type Props = CompositeScreenProps<
@@ -66,8 +70,8 @@ export function PracticesScreen({ navigation }: Props) {
     <AppScreen
       action={
         isReadOnlyTeam ? undefined : (
-          <Button
-            color={goalRed}
+          <AppButton
+            icon="add-circle-outline"
             title={t('practices.addPracticePlanButton')}
             onPress={() => navigation.navigate('PracticePlanDetail')}
           />
@@ -77,31 +81,61 @@ export function PracticesScreen({ navigation }: Props) {
       title={t('practices.title')}
     >
       {practicePlansQuery.isLoading ? (
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       ) : null}
       {practicePlansQuery.error ? (
         <Text style={appScreenStyles.error}>{t('practices.loadError')}</Text>
       ) : null}
-      {!practicePlansQuery.isLoading && plans.length === 0 ? (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('practices.emptyTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('practices.emptyDescription')}
-          </Text>
+      <View style={appScreenStyles.card}>
+        <View style={appScreenStyles.row}>
+          <View style={styles.drillHeaderCopy}>
+            <Text style={appScreenStyles.cardTitle}>
+              {t('practices.drillsTitle')}
+            </Text>
+            <Text style={appScreenStyles.cardDescription}>
+              {t('practices.drillsDescription')}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.drillActions}>
+          <AppButton
+            icon="library-outline"
+            title={t('practices.openDrillLibraryButton')}
+            onPress={() => navigation.navigate('DrillLibrary')}
+          />
+          <AppButton
+            icon="school-outline"
+            title={t('practices.openSchoolDrillLibraryButton')}
+            onPress={() => navigation.navigate('SchoolDrillLibrary')}
+          />
           {isReadOnlyTeam ? null : (
-            <Button
-              color={goalRed}
-              title={t('practices.addFirstPracticePlanButton')}
-              onPress={() => navigation.navigate('PracticePlanDetail')}
+            <AppButton
+              icon="add-circle-outline"
+              title={t('practices.addDrillButton')}
+              onPress={() => navigation.navigate('DrillEditor')}
             />
           )}
         </View>
+      </View>
+      {!practicePlansQuery.isLoading && plans.length === 0 ? (
+        <EmptyState
+          description={t('practices.emptyDescription')}
+          icon="clipboard-outline"
+          title={t('practices.emptyTitle')}
+          action={
+            isReadOnlyTeam ? undefined : (
+              <AppButton
+                icon="add-circle-outline"
+                title={t('practices.addFirstPracticePlanButton')}
+                onPress={() => navigation.navigate('PracticePlanDetail')}
+              />
+            )
+          }
+        />
       ) : null}
       <View style={appScreenStyles.list}>
         {plans.map((plan) => (
-          <Pressable
+          <AnimatedPressable
             accessibilityRole="button"
             key={plan.id}
             onPress={() =>
@@ -120,7 +154,7 @@ export function PracticesScreen({ navigation }: Props) {
                 count: countSegments(plan.segments),
               })}
             </Text>
-          </Pressable>
+          </AnimatedPressable>
         ))}
       </View>
     </AppScreen>
@@ -130,3 +164,17 @@ export function PracticesScreen({ navigation }: Props) {
 function countSegments(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
 }
+
+const styles = StyleSheet.create({
+  drillActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  drillHeaderCopy: {
+    flex: 1,
+    flexShrink: 1,
+  },
+});

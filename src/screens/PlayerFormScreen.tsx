@@ -17,6 +17,12 @@ import {
   authStyles,
 } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
+import {
+  isLikelyNetworkError,
+  makeTeamCacheKey,
+  readCache,
+  updateCachedListItem,
+} from '../offline/cache';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import { colors, goalRed } from '../theme/theme';
 import type {
@@ -78,19 +84,45 @@ export function PlayerFormScreen({ navigation, route }: Props) {
         throw new Error(t('playerForm.missingPlayerError'));
       }
 
-      const { data, error: loadError } = await supabase
-        .from('players')
-        .select(
-          'id, team_id, first_name, last_name, jersey_number, natural_position, height, weight, status, status_note, parent_name, parent_phone, emergency_contact_name, emergency_contact_phone, medical_notes, created_at',
-        )
-        .eq('id', playerId)
-        .single();
+      try {
+        const { data, error: loadError } = await supabase
+          .from('players')
+          .select(
+            'id, team_id, first_name, last_name, jersey_number, natural_position, height, weight, status, status_note, parent_name, parent_phone, emergency_contact_name, emergency_contact_phone, medical_notes, created_at',
+          )
+          .eq('id', playerId)
+          .single();
 
-      if (loadError) {
-        throw loadError;
+        if (loadError) {
+          throw loadError;
+        }
+
+        const player = data as Player;
+
+        if (activeTeam) {
+          await updateCachedListItem(
+            makeTeamCacheKey('players', activeTeam.id),
+            player,
+          );
+        }
+
+        return player;
+      } catch (error) {
+        if (activeTeam && isLikelyNetworkError(error)) {
+          const cachedPlayers = await readCache<Player[]>(
+            makeTeamCacheKey('players', activeTeam.id),
+          );
+          const cachedPlayer = cachedPlayers?.data.find(
+            (player) => player.id === playerId,
+          );
+
+          if (cachedPlayer) {
+            return cachedPlayer;
+          }
+        }
+
+        throw error;
       }
-
-      return data as Player;
     },
     enabled: isEditing,
   });
@@ -186,6 +218,8 @@ export function PlayerFormScreen({ navigation, route }: Props) {
     if (saveError) {
       if (saveError.code === '23505') {
         setError(t('playerForm.duplicateJerseyError'));
+      } else if (isLikelyNetworkError(saveError)) {
+        setError(t('offline.writeBlocked'));
       } else {
         setError(t('playerForm.saveError'));
       }
@@ -221,7 +255,11 @@ export function PlayerFormScreen({ navigation, route }: Props) {
       .eq('id', playerId);
 
     if (deleteError) {
-      setError(t('playerForm.deleteError'));
+      setError(
+        isLikelyNetworkError(deleteError)
+          ? t('offline.writeBlocked')
+          : t('playerForm.deleteError'),
+      );
       setIsSubmitting(false);
       return;
     }

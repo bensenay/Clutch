@@ -4,7 +4,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   Image,
   Pressable,
   StyleSheet,
@@ -15,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { getFunctionErrorMessage } from '../auth/onboarding';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import {
   FormField,
@@ -25,10 +25,15 @@ import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import {
   colors,
+  fontSizes,
   fonts,
   goalRed,
   iceWhite,
+  lineHeights,
+  radii,
   rinkNavy,
+  sizes,
+  spacing,
 } from '../theme/theme';
 import { DirectorOrganizationSettingsSection } from './DirectorSettingsScreen';
 
@@ -165,16 +170,17 @@ export function SettingsScreen({ navigation }: Props) {
         <Text style={appScreenStyles.cardDescription}>
           {t('settings.languageDescription')}
         </Text>
-        <Button
-          color={goalRed}
+        <AppButton
+          icon="language-outline"
           title={t('settings.languageToggle', {
             language: nextLanguage.toUpperCase(),
           })}
           onPress={() => void setLanguage(nextLanguage)}
+          variant="secondary"
         />
       </View>
-      <Button
-        color={goalRed}
+      <AppButton
+        icon="log-out-outline"
         title={t('common.signOut')}
         onPress={() => void handleSignOut()}
       />
@@ -223,8 +229,8 @@ function DirectorAssistantCoachesSettingsLink({
       <Text style={appScreenStyles.cardDescription}>
         {t('settings.assistantCoachesDescription')}
       </Text>
-      <Button
-        color={goalRed}
+      <AppButton
+        icon="people-outline"
         title={t('settings.assistantCoachesButton')}
         onPress={() => navigation.navigate('DirectorAssistantCoaches')}
       />
@@ -545,11 +551,11 @@ function TeamJoinCodeSection() {
       {errorMessage ? (
         <Text style={appScreenStyles.error}>{errorMessage}</Text>
       ) : null}
-      <Button
-        color={goalRed}
+      <AppButton
         disabled={
           isRegenerating || !selectedTeam || selectedTeam.joinCodeUnavailable
         }
+        icon="refresh-outline"
         title={
           isRegenerating
             ? t('settings.teamJoinCodeRegenerating')
@@ -679,9 +685,9 @@ function JoinAnotherTeamSection() {
         <Text style={authStyles.error}>{errorMessage}</Text>
       ) : null}
       {message ? <Text style={appScreenStyles.note}>{message}</Text> : null}
-      <Button
-        color={goalRed}
+      <AppButton
         disabled={isJoining}
+        icon="log-in-outline"
         title={
           isJoining
             ? t('settings.joinAnotherTeamJoining')
@@ -915,9 +921,9 @@ function TeamBrandingSection() {
           <Text style={styles.sectionLabel}>
             {t('settings.teamBrandingLogoLabel')}
           </Text>
-          <Button
-            color={goalRed}
+          <AppButton
             disabled={isUploading || brandingQuery.isLoading}
+            icon="image-outline"
             title={
               isUploading
                 ? t('settings.teamBrandingUploading')
@@ -971,9 +977,9 @@ function TeamBrandingSection() {
       {successMessage ? (
         <Text style={styles.success}>{successMessage}</Text>
       ) : null}
-      <Button
-        color={goalRed}
+      <AppButton
         disabled={isSaving || isUploading || brandingQuery.isLoading}
+        icon="save-outline"
         title={
           isSaving
             ? t('settings.teamBrandingSaving')
@@ -1077,7 +1083,7 @@ function getTeamJoinCodeLoadErrorMessage(
 
 const styles = StyleSheet.create({
   colorPicker: {
-    gap: 8,
+    gap: spacing.sm,
   },
   lightSwatch: {
     borderColor: colors.border,
@@ -1085,18 +1091,18 @@ const styles = StyleSheet.create({
   },
   logoActions: {
     flex: 1,
-    gap: 8,
+    gap: spacing.sm,
   },
   logoFrame: {
     alignItems: 'center',
     backgroundColor: colors.cardPressed,
     borderColor: goalRed,
-    borderRadius: 42,
+    borderRadius: radii.logoLarge,
     borderWidth: 2,
-    height: 84,
+    height: sizes.logoLarge,
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 84,
+    width: sizes.logoLarge,
   },
   logoImage: {
     height: '100%',
@@ -1105,43 +1111,43 @@ const styles = StyleSheet.create({
   logoPlaceholder: {
     color: goalRed,
     fontFamily: fonts.display,
-    fontSize: 24,
+    fontSize: fontSizes.displayLg,
     fontWeight: '900',
   },
   logoRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 14,
+    gap: spacing.gutter,
   },
   previewBar: {
-    borderRadius: 12,
+    borderRadius: radii.card,
     flex: 1,
-    height: 24,
+    height: sizes.previewBarHeight,
   },
   previewCard: {
     backgroundColor: colors.cardPressed,
-    borderRadius: 12,
-    gap: 10,
-    padding: 12,
+    borderRadius: radii.card,
+    gap: spacing.control,
+    padding: spacing.md,
   },
   previewCircle: {
-    borderRadius: 28,
-    height: 56,
-    width: 56,
+    borderRadius: radii.previewCircle,
+    height: sizes.previewCircle,
+    width: sizes.previewCircle,
   },
   previewPill: {
-    borderRadius: 999,
-    height: 24,
-    width: 96,
+    borderRadius: radii.pill,
+    height: sizes.previewBarHeight,
+    width: sizes.previewBarWidth,
   },
   previewShapes: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.control,
   },
   sectionLabel: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '800',
   },
   selectedTeamCodeOption: {
@@ -1157,43 +1163,43 @@ const styles = StyleSheet.create({
   },
   success: {
     color: colors.success,
-    lineHeight: 20,
+    lineHeight: lineHeights.md,
   },
   swatch: {
-    borderRadius: 16,
-    height: 32,
-    width: 32,
+    borderRadius: radii.xl,
+    height: sizes.swatch,
+    width: sizes.swatch,
   },
   swatchButton: {
     borderColor: 'transparent',
-    borderRadius: 22,
+    borderRadius: radii.swatchButton,
     borderWidth: 2,
-    padding: 4,
+    padding: spacing.xs,
   },
   swatchGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   teamCodeOption: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    gap: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: spacing.tight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.control,
   },
   teamCodeOptionMeta: {
     color: colors.slateGrey,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
   },
   teamCodeOptions: {
-    gap: 8,
+    gap: spacing.sm,
   },
   teamCodeOptionTitle: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '800',
   },
 });

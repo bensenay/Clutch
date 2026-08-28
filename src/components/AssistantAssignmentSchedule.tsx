@@ -3,7 +3,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import type {
@@ -14,9 +14,13 @@ import {
   type ActiveTeam,
   useActiveTeam,
 } from '../teams/ActiveTeamContext';
-import { colors, goalRed, slateGrey } from '../theme/theme';
+import { colors, goalRed, slateGrey, spacing } from '../theme/theme';
+import { AnimatedPressable } from './AnimatedPressable';
+import { AppButton } from './AppButton';
 import { appScreenStyles } from './AppScreen';
 import { FormField, authStyles } from './AuthScreen';
+import { EmptyState } from './EmptyState';
+import { LoadingState } from './LoadingState';
 
 type Navigation = CompositeNavigationProp<
   BottomTabNavigationProp<AuthenticatedTabParamList, 'TeamTab'>,
@@ -258,7 +262,7 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
         })}
       </Text>
       {assignmentsQuery.isLoading ? (
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       ) : null}
       {assignmentsQuery.error || gamesQuery.error || practicesQuery.error ? (
         <Text style={appScreenStyles.error}>
@@ -266,9 +270,11 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
         </Text>
       ) : null}
       {!assignmentsQuery.isLoading && assignments.length === 0 ? (
-        <Text style={appScreenStyles.note}>
-          {t('assistantSchedule.emptyWeek')}
-        </Text>
+        <EmptyState
+          description={t('assistantSchedule.emptyWeek')}
+          icon="calendar-outline"
+          title={t('assistantSchedule.title')}
+        />
       ) : null}
       <View style={styles.assignmentList}>
         {assignments.map((assignment) => {
@@ -284,10 +290,9 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
 
           return (
             <View key={assignment.id} style={styles.assignmentCard}>
-              <Pressable
+              <AnimatedPressable
                 accessibilityRole="button"
                 onPress={() => openAssignment(assignment)}
-                style={({ pressed }) => pressed && styles.pressed}
               >
                 <View style={appScreenStyles.row}>
                   <Text style={styles.assignmentTitle}>
@@ -311,7 +316,7 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
                     {t('assistantSchedule.noMatchingPlan')}
                   </Text>
                 ) : null}
-              </Pressable>
+              </AnimatedPressable>
               <FormField
                 autoCapitalize="sentences"
                 label={t('assistantSchedule.coachNoteLabel')}
@@ -333,9 +338,9 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
               ) : null}
               <View style={styles.actionRow}>
                 {assignment.status !== 'confirmed' ? (
-                  <Button
-                    color={goalRed}
+                  <AppButton
                     disabled={isSaving}
+                    icon="checkmark-circle-outline"
                     title={t('assistantSchedule.confirmButton')}
                     onPress={() =>
                       void updateAssignment(assignment, {
@@ -345,9 +350,9 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
                     }
                   />
                 ) : null}
-                <Button
-                  color={goalRed}
+                <AppButton
                   disabled={isSaving}
+                  icon="save-outline"
                   title={t('assistantSchedule.saveNoteButton')}
                   onPress={() =>
                     void updateAssignment(assignment, {
@@ -356,8 +361,12 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
                   }
                 />
                 {hasMatch ? (
-                  <Button
-                    color={goalRed}
+                  <AppButton
+                    icon={
+                      assignment.assignment_type === 'game'
+                        ? 'calendar-outline'
+                        : 'clipboard-outline'
+                    }
                     title={
                       assignment.assignment_type === 'game'
                         ? t('assistantSchedule.openGameButton')
@@ -366,8 +375,8 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
                     onPress={() => openAssignment(assignment)}
                   />
                 ) : null}
-                <Button
-                  color={goalRed}
+                <AppButton
+                  icon="people-outline"
                   title={t('assistantSchedule.openRosterButton')}
                   onPress={() => openRoster(assignment)}
                 />
@@ -484,18 +493,18 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   assignmentCard: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 10,
-    padding: 12,
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   assignmentList: {
-    gap: 10,
+    gap: spacing.sm,
   },
   assignmentTitle: {
     color: colors.textPrimary,
@@ -505,11 +514,8 @@ const styles = StyleSheet.create({
   },
   multiline: {
     minHeight: 78,
-    paddingTop: 12,
+    paddingTop: spacing.md,
     textAlignVertical: 'top',
-  },
-  pressed: {
-    opacity: 0.78,
   },
   statusBadge: {
     color: goalRed,

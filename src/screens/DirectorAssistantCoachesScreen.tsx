@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   Alert,
-  Button,
   Pressable,
   StyleSheet,
   Text,
@@ -13,13 +12,22 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { getFunctionErrorMessage } from '../auth/onboarding';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import {
   FormField,
   authStyles,
 } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
-import { colors, goalRed, slateGrey } from '../theme/theme';
+import {
+  colors,
+  fontSizes,
+  goalRed,
+  radii,
+  sizes,
+  slateGrey,
+  spacing,
+} from '../theme/theme';
 
 type Props = NativeStackScreenProps<
   AuthenticatedStackParamList,
@@ -620,9 +628,9 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
         {inviteMessage ? (
           <Text style={appScreenStyles.note}>{inviteMessage}</Text>
         ) : null}
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={isInviting || (teamsQuery.data ?? []).length === 0}
+          icon="mail-outline"
           title={
             isInviting
               ? t('directorAssistantCoaches.inviting')
@@ -762,13 +770,13 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
         {membershipMessage ? (
           <Text style={appScreenStyles.note}>{membershipMessage}</Text>
         ) : null}
-        <Button
-          color={goalRed}
+        <AppButton
           disabled={
             isAddingMembership ||
             (organizationCoachesQuery.data ?? []).length === 0 ||
             (teamsQuery.data ?? []).length === 0
           }
+          icon="person-add-outline"
           title={
             isAddingMembership
               ? t('directorAssistantCoaches.addingMembership')
@@ -1006,9 +1014,9 @@ function AssignmentForm({
       {assignmentMessage ? (
         <Text style={appScreenStyles.note}>{assignmentMessage}</Text>
       ) : null}
-      <Button
-        color={goalRed}
+      <AppButton
         disabled={isSaving || teams.length === 0}
+        icon="save-outline"
         title={
           isSaving
             ? t('directorAssistantCoaches.savingAssignment')
@@ -1184,97 +1192,97 @@ const styles = StyleSheet.create({
   assistantButton: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    gap: 3,
-    padding: 12,
+    gap: spacing.tight,
+    padding: spacing.md,
   },
   assistantEmail: {
     color: slateGrey,
-    fontSize: 13,
+    fontSize: fontSizes.sm,
   },
   assistantList: {
-    gap: 8,
+    gap: spacing.sm,
   },
   assistantName: {
     color: colors.textPrimary,
-    fontSize: 15,
+    fontSize: fontSizes.base,
     fontWeight: '800',
   },
   assignmentCard: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    gap: 8,
-    padding: 12,
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   assignmentForm: {
-    gap: 12,
+    gap: spacing.md,
   },
   assignmentList: {
-    gap: 10,
-    marginTop: 8,
+    gap: spacing.control,
+    marginTop: spacing.sm,
   },
   assignmentTeam: {
     color: colors.textPrimary,
     flex: 1,
-    fontSize: 15,
+    fontSize: fontSizes.base,
     fontWeight: '800',
   },
   choiceButton: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    gap: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: spacing.tight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.control,
   },
   choiceGrid: {
-    gap: 8,
+    gap: spacing.sm,
   },
   choiceMeta: {
     color: slateGrey,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
   },
   choiceText: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '800',
   },
   dateTimeField: {
     flex: 1,
-    minWidth: 130,
+    minWidth: sizes.assistantDateFieldMinWidth,
   },
   dateTimeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.md,
   },
   multiline: {
-    minHeight: 92,
-    paddingTop: 12,
+    minHeight: sizes.directorAssistantMultiline,
+    paddingTop: spacing.md,
     textAlignVertical: 'top',
   },
   sectionLabel: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: fontSizes.md,
     fontWeight: '700',
   },
   segmentedControl: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   segmentButton: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    minWidth: 112,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    minWidth: sizes.membershipButtonMinWidth,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.control,
   },
   selectedAssistantButton: {
     borderColor: goalRed,
@@ -1288,7 +1296,7 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     color: goalRed,
-    fontSize: 12,
+    fontSize: fontSizes.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
   },

@@ -18,6 +18,7 @@ export function AuthStack() {
     <Stack.Navigator
       initialRouteName="Landing"
       screenOptions={{
+        animation: 'slide_from_right',
         contentStyle: { backgroundColor: rinkNavy },
         headerBackTitle: t('common.back'),
         headerShadowVisible: false,

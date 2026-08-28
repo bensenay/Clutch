@@ -5,7 +5,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   View,
@@ -14,9 +13,10 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { LoadingState } from '../components/LoadingState';
 import { CompleteCoachOnboardingScreen } from '../screens/CompleteCoachOnboardingScreen';
 import { ActiveTeamProvider } from '../teams/ActiveTeamContext';
-import { goalRed, rinkNavy } from '../theme/theme';
+import { rinkNavy, spacing } from '../theme/theme';
 import { AuthenticatedStack } from './AuthenticatedStack';
 import { AuthStack } from './AuthStack';
 
@@ -31,7 +31,7 @@ export function RootNavigator() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color={goalRed} size="large" />
+        <LoadingState />
       </View>
     );
   }
@@ -74,7 +74,7 @@ function AuthenticatedGate({ session }: { session: Session }) {
   if (profileQuery.isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color={goalRed} size="large" />
+        <LoadingState />
       </View>
     );
   }
@@ -114,8 +114,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: rinkNavy,
     flex: 1,
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'center',
-    padding: 24,
+    padding: spacing.xl,
   },
 });

@@ -1,12 +1,12 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Button,
   Pressable,
   StyleSheet,
   Text,
@@ -17,11 +17,17 @@ import type { MarkedDates } from 'react-native-calendars/src/types';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
+import { AnimatedPressable } from '../components/AnimatedPressable';
+import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingState } from '../components/LoadingState';
 import type {
   AuthenticatedStackParamList,
   AuthenticatedTabParamList,
 } from '../navigation/types';
+import { fetchWithCache, makeTeamCacheKey } from '../offline/cache';
+import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import {
   colors,
@@ -153,6 +159,7 @@ export function GameListScreen({ navigation }: Props) {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [exportError, setExportError] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [cachedGamesAt, setCachedGamesAt] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: ['profile', session?.user.id],
@@ -336,22 +343,37 @@ export function GameListScreen({ navigation }: Props) {
         return [] as Game[];
       }
 
-      const { data, error } = await supabase
-        .from('games')
-        .select(
-          'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
-        )
-        .in('team_id', selectedTeamIds)
-        .order('game_date', { ascending: true });
+      const fetchGames = async () => {
+        const { data, error } = await supabase
+          .from('games')
+          .select(
+            'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
+          )
+          .in('team_id', selectedTeamIds)
+          .order('game_date', { ascending: true });
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        return sortGames((data ?? []) as Game[]);
+      };
+
+      if (selectedTeamIds.length === 1) {
+        return fetchWithCache<Game[]>({
+          cacheKey: makeTeamCacheKey('games', selectedTeamIds[0]),
+          fetcher: fetchGames,
+          onCacheFallback: setCachedGamesAt,
+          onNetworkSuccess: () => setCachedGamesAt(null),
+        });
       }
 
-      return sortGames((data ?? []) as Game[]);
+      setCachedGamesAt(null);
+      return fetchGames();
     },
     enabled: selectedTeamIds.length > 0,
   });
+  const refetchGames = gamesQuery.refetch;
   const practicesQuery = useQuery({
     queryKey: ['calendar-practice-plans', selectedTeamIdsKey],
     queryFn: async () => {
@@ -407,6 +429,14 @@ export function GameListScreen({ navigation }: Props) {
     isSameMonth(event.date, visibleMonth),
   );
   const markedDates = makeMarkedDates(filteredEvents, selectedDateKey);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedTeamIds.length > 0) {
+        void refetchGames();
+      }
+    }, [refetchGames, selectedTeamIds.length, selectedTeamIdsKey]),
+  );
 
   function navigateToEvent(event: ScheduleEvent) {
     if (event.type === 'practice') {
@@ -502,16 +532,16 @@ export function GameListScreen({ navigation }: Props) {
         <View style={styles.headerActions}>
           {activeView === 'list' ? (
             canAddGame ? (
-              <Button
-                color={goalRed}
+              <AppButton
+                icon="add-circle-outline"
                 title={t('games.addGameButton')}
                 onPress={() => navigation.navigate('GameForm')}
               />
             ) : null
           ) : (
-            <Button
-              color={goalRed}
+            <AppButton
               disabled={isExporting}
+              icon="download-outline"
               title={
                 isExporting
                   ? t('calendar.exporting')
@@ -549,7 +579,7 @@ export function GameListScreen({ navigation }: Props) {
       {isLoadingCalendarAccess ||
       gamesQuery.isLoading ||
       practicesQuery.isLoading ? (
-        <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
+        <LoadingState />
       ) : null}
       {hasCalendarAccessError || gamesQuery.error || practicesQuery.error ? (
         <Text style={appScreenStyles.error}>{t('games.loadError')}</Text>
@@ -557,9 +587,11 @@ export function GameListScreen({ navigation }: Props) {
       {exportError ? (
         <Text style={appScreenStyles.error}>{exportError}</Text>
       ) : null}
+      <OfflineNotice cachedAt={cachedGamesAt} />
       {activeView === 'list' ? (
         <GameScheduleList
           events={filterEvents(allEvents, 'games')}
+          hasError={Boolean(gamesQuery.error)}
           isLoading={gamesQuery.isLoading}
           navigateToGame={navigateToEvent}
           navigateToLineup={(event) =>
@@ -603,6 +635,7 @@ export function GameListScreen({ navigation }: Props) {
 function GameScheduleList({
   canAddGame,
   events,
+  hasError,
   isLoading,
   navigateToGame,
   navigateToLineup,
@@ -611,6 +644,7 @@ function GameScheduleList({
 }: {
   canAddGame: boolean;
   events: ScheduleEvent[];
+  hasError: boolean;
   isLoading: boolean;
   navigateToGame: (event: ScheduleEvent) => void;
   navigateToLineup: (event: ScheduleEvent) => void;
@@ -621,30 +655,28 @@ function GameScheduleList({
 
   return (
     <>
-      {!isLoading && events.length === 0 ? (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('games.emptyTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('games.emptyDescription')}
-          </Text>
-          {canAddGame ? (
-            <Button
-              color={goalRed}
-              title={t('games.addFirstGameButton')}
-              onPress={navigateToNewGame}
-            />
-          ) : null}
-        </View>
+      {!isLoading && !hasError && events.length === 0 ? (
+        <EmptyState
+          description={t('games.emptyDescription')}
+          icon="calendar-outline"
+          title={t('games.emptyTitle')}
+          action={
+            canAddGame ? (
+              <AppButton
+                icon="add-circle-outline"
+                title={t('games.addFirstGameButton')}
+                onPress={navigateToNewGame}
+              />
+            ) : undefined
+          }
+        />
       ) : null}
       <View style={appScreenStyles.list}>
         {events.map((event) => (
           <View key={`${event.type}-${event.id}`} style={appScreenStyles.card}>
-            <Pressable
+            <AnimatedPressable
               accessibilityRole="button"
               onPress={() => navigateToGame(event)}
-              style={({ pressed }) => pressed && styles.pressed}
             >
               <View style={appScreenStyles.row}>
                 <View style={styles.details}>
@@ -667,9 +699,9 @@ function GameScheduleList({
                   </Text>
                 </View>
               </View>
-            </Pressable>
-            <Button
-              color={goalRed}
+            </AnimatedPressable>
+            <AppButton
+              icon="list-outline"
               title={
                 event.isReadOnly
                   ? t('gameForm.viewLineupButton')
