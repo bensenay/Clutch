@@ -3,16 +3,21 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
-import {
-  FormField,
-  authStyles,
-} from '../components/AuthScreen';
+import { FormField, authStyles } from '../components/AuthScreen';
 import type { AuthenticatedStackParamList } from '../navigation/types';
+import {
+  isLikelyNetworkError,
+  makeTeamCacheKey,
+  readCache,
+  updateCachedListItem,
+} from '../offline/cache';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import {
   colors,
@@ -101,17 +106,41 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
         throw new Error(t('practiceDetail.missingPracticePlanError'));
       }
 
-      const { data, error: loadError } = await supabase
-        .from('practice_plans')
-        .select('id, team_id, practice_date, segments')
-        .eq('id', practicePlanId)
-        .single();
+      try {
+        const { data, error: loadError } = await supabase
+          .from('practice_plans')
+          .select('id, team_id, practice_date, segments')
+          .eq('id', practicePlanId)
+          .single();
 
-      if (loadError) {
+        if (loadError) {
+          throw loadError;
+        }
+
+        const practice = data as PracticePlan;
+        if (activeTeam) {
+          await updateCachedListItem(
+            makeTeamCacheKey('practice-plans', activeTeam.id),
+            practice,
+          );
+        }
+        return practice;
+      } catch (loadError) {
+        if (activeTeam && isLikelyNetworkError(loadError)) {
+          const cached = await readCache<PracticePlan[]>(
+            makeTeamCacheKey('practice-plans', activeTeam.id),
+          );
+          const practice = cached?.data.find(
+            (candidate) => candidate.id === practicePlanId,
+          );
+
+          if (practice) {
+            return practice;
+          }
+        }
+
         throw loadError;
       }
-
-      return data as PracticePlan;
     },
     enabled: isEditing,
   });
@@ -341,13 +370,20 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
 
     if (saveResult.error) {
       console.error('Unable to save practice plan:', saveResult.error);
-      setError(t('practiceDetail.saveError'));
+      setError(
+        isLikelyNetworkError(saveResult.error)
+          ? t('offline.writeBlocked')
+          : t('practiceDetail.saveError'),
+      );
       setIsSaving(false);
       return;
     }
 
     await queryClient.invalidateQueries({
       queryKey: ['practice-plans', activeTeam?.id],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['calendar-practice-plans'],
     });
     await queryClient.invalidateQueries({
       queryKey: ['practice-plan', practicePlanId],
@@ -362,6 +398,53 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     }
 
     navigation.replace('MainTabs', { screen: 'PracticesTab' });
+  }
+
+  async function deletePracticePlan() {
+    if (!practicePlanId) {
+      return;
+    }
+
+    setError('');
+    setIsSaving(true);
+    const { error: deleteError } = await supabase
+      .from('practice_plans')
+      .delete()
+      .eq('id', practicePlanId);
+
+    if (deleteError) {
+      setError(
+        isLikelyNetworkError(deleteError)
+          ? t('offline.writeBlocked')
+          : t('practiceDetail.deleteError'),
+      );
+      setIsSaving(false);
+      return;
+    }
+
+    await queryClient.invalidateQueries({
+      queryKey: ['practice-plans', activeTeam?.id],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['calendar-practice-plans'],
+    });
+    setIsSaving(false);
+    navigation.replace('MainTabs', { screen: 'PracticesTab' });
+  }
+
+  function confirmDeletePracticePlan() {
+    Alert.alert(
+      t('practiceDetail.deleteConfirmTitle'),
+      t('practiceDetail.deleteConfirmDescription'),
+      [
+        { style: 'cancel', text: t('common.cancel') },
+        {
+          style: 'destructive',
+          text: t('practiceDetail.deleteConfirmButton'),
+          onPress: () => void deletePracticePlan(),
+        },
+      ],
+    );
   }
 
   async function handleExport() {
@@ -506,6 +589,15 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
           onPress={() => void handleSave()}
         />
       )}
+      {isEditing && !isReadOnly ? (
+        <AppButton
+          disabled={isSaving}
+          icon="trash-outline"
+          title={t('practiceDetail.deleteButton')}
+          onPress={confirmDeletePracticePlan}
+          variant="danger"
+        />
+      ) : null}
       <AppButton
         disabled={isSaving || isExporting || practiceQuery.isLoading}
         icon="download-outline"
@@ -714,6 +806,15 @@ function SegmentEditor({
   const { t } = useTranslation();
   const teamDrills = drillOptions.filter((drill) => drill.source === 'team');
   const schoolDrills = drillOptions.filter((drill) => drill.source === 'school');
+  const dragGesture = Gesture.Pan()
+    .activeOffsetY([-10, 10])
+    .onEnd((event) => {
+      if (event.translationY < -24 && canMoveUp) {
+        runOnJS(onMoveUp)();
+      } else if (event.translationY > 24 && canMoveDown) {
+        runOnJS(onMoveDown)();
+      }
+    });
 
   return (
     <View style={styles.segmentCard}>
@@ -737,6 +838,16 @@ function SegmentEditor({
           </Text>
         )}
       </View>
+      {isReadOnly ? null : (
+        <GestureDetector gesture={dragGesture}>
+          <View accessibilityLabel={t('practiceDetail.dragHandleLabel')} style={styles.dragHandle}>
+            <Text style={styles.dragHandleIcon}>≡</Text>
+            <Text style={styles.dragHandleText}>
+              {t('practiceDetail.dragHandleLabel')}
+            </Text>
+          </View>
+        </GestureDetector>
+      )}
       {selectedDrill ? (
         <Pressable
           accessibilityRole="button"
@@ -1560,6 +1671,28 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSizes.displaySm,
     fontWeight: '900',
+  },
+  dragHandle: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.cardPressed,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  dragHandleIcon: {
+    color: goalRed,
+    fontSize: fontSizes.xl,
+    fontWeight: '900',
+  },
+  dragHandleText: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
   },
   weekdayGrid: {
     flexDirection: 'row',

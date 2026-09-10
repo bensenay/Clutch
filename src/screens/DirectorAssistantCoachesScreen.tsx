@@ -61,6 +61,13 @@ type AssistantCoach = Profile & {
   assistantTeams: Team[];
 };
 
+type OrganizationCoach = Profile & {
+  memberships: Array<{
+    role: MembershipRole;
+    team: Team;
+  }>;
+};
+
 type AssignmentType = 'game' | 'practice';
 type AssignmentStatus = 'pending' | 'confirmed';
 
@@ -103,6 +110,7 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
   const [membershipMessage, setMembershipMessage] = useState('');
   const [membershipError, setMembershipError] = useState('');
   const [isAddingMembership, setIsAddingMembership] = useState(false);
+  const [isRemovingMembership, setIsRemovingMembership] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [assignmentType, setAssignmentType] = useState<AssignmentType>(
     DEFAULT_ASSIGNMENT_TYPE,
@@ -119,7 +127,7 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
   const [isSavingAssignment, setIsSavingAssignment] = useState(false);
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['director-coaches-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -255,10 +263,56 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
         throw error;
       }
 
-      return (data ?? []) as Profile[];
+      const coaches = (data ?? []) as Profile[];
+
+      if (coaches.length === 0) {
+        return [] as OrganizationCoach[];
+      }
+
+      const { data: memberships, error: membershipsError } = await supabase
+        .from('team_memberships')
+        .select('user_id, team_id, membership_role')
+        .in('user_id', coaches.map((coach) => coach.id));
+
+      if (membershipsError) {
+        throw membershipsError;
+      }
+
+      const teamById = new Map(
+        (teamsQuery.data ?? []).map((team) => [team.id, team]),
+      );
+      const membershipsByCoach = new Map<
+        string,
+        OrganizationCoach['memberships']
+      >();
+
+      for (const membership of (memberships ?? []) as TeamMembership[]) {
+        const team = teamById.get(membership.team_id);
+
+        if (!team) {
+          continue;
+        }
+
+        const current = membershipsByCoach.get(membership.user_id) ?? [];
+        current.push({ role: membership.membership_role, team });
+        membershipsByCoach.set(membership.user_id, current);
+      }
+
+      return coaches.map((coach) => ({
+        ...coach,
+        memberships: membershipsByCoach.get(coach.id) ?? [],
+      }));
     },
-    enabled: profile?.role === 'director' && Boolean(profile.school_id),
+    enabled:
+      profile?.role === 'director' &&
+      Boolean(profile.school_id) &&
+      Boolean(teamsQuery.data),
   });
+
+  const selectedOrganizationCoach =
+    organizationCoachesQuery.data?.find(
+      (coach) => coach.id === selectedCoachForMembershipId,
+    ) ?? null;
 
   const selectedAssistant =
     assistantsQuery.data?.find(
@@ -446,6 +500,91 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
     });
     await queryClient.invalidateQueries({ queryKey: ['coach-teams'] });
     setIsAddingMembership(false);
+  }
+
+  async function removeCoachMembership(
+    coachId: string,
+    teamId: string | null,
+    removeFromOrganization: boolean,
+  ) {
+    setMembershipError('');
+    setMembershipMessage('');
+    setIsRemovingMembership(true);
+
+    const { error } = await supabase.rpc('remove_coach_membership', {
+      target_user_id: coachId,
+      target_team_id: teamId,
+      remove_from_organization: removeFromOrganization,
+    });
+
+    if (error) {
+      console.error('Unable to remove coach membership:', error);
+      setMembershipError(t('directorAssistantCoaches.removeError'));
+      setIsRemovingMembership(false);
+      return;
+    }
+
+    if (removeFromOrganization) {
+      setSelectedCoachForMembershipId('');
+      if (selectedAssistantId === coachId) {
+        setSelectedAssistantId(null);
+      }
+    }
+
+    setMembershipMessage(
+      t(
+        removeFromOrganization
+          ? 'directorAssistantCoaches.removeOrganizationSuccess'
+          : 'directorAssistantCoaches.removeTeamSuccess',
+      ),
+    );
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ['assistant-coaches', profile?.school_id],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['organization-coaches', profile?.school_id],
+      }),
+      queryClient.invalidateQueries({ queryKey: ['coach-assignments'] }),
+      queryClient.invalidateQueries({ queryKey: ['coach-teams'] }),
+    ]);
+    setIsRemovingMembership(false);
+  }
+
+  function confirmRemoveCoach(
+    coach: OrganizationCoach,
+    team: Team | null,
+  ) {
+    const removeFromOrganization = team === null;
+    Alert.alert(
+      t(
+        removeFromOrganization
+          ? 'directorAssistantCoaches.removeOrganizationTitle'
+          : 'directorAssistantCoaches.removeTeamTitle',
+      ),
+      t(
+        removeFromOrganization
+          ? 'directorAssistantCoaches.removeOrganizationDescription'
+          : 'directorAssistantCoaches.removeTeamDescription',
+        {
+          coachName: formatCoachName(coach),
+          teamName: team?.name ?? '',
+        },
+      ),
+      [
+        { style: 'cancel', text: t('common.cancel') },
+        {
+          style: 'destructive',
+          text: t('directorAssistantCoaches.removeButton'),
+          onPress: () =>
+            void removeCoachMembership(
+              coach.id,
+              team?.id ?? null,
+              removeFromOrganization,
+            ),
+        },
+      ],
+    );
   }
 
   async function saveAssignment(skipConflictCheck = false) {
@@ -764,6 +903,43 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
           )}
         </View>
 
+        {selectedOrganizationCoach ? (
+          <View style={styles.membershipManager}>
+            <Text style={styles.sectionLabel}>
+              {t('directorAssistantCoaches.currentMembershipsTitle')}
+            </Text>
+            {selectedOrganizationCoach.memberships.length === 0 ? (
+              <Text style={appScreenStyles.note}>
+                {t('directorAssistantCoaches.noCurrentMemberships')}
+              </Text>
+            ) : null}
+            {selectedOrganizationCoach.memberships.map(({ role, team }) => (
+              <View key={team.id} style={styles.membershipRow}>
+                <View style={styles.membershipCopy}>
+                  <Text style={styles.choiceText}>{team.name}</Text>
+                  <Text style={styles.choiceMeta}>
+                    {t(`directorAssistantCoaches.membershipRoles.${role}`)}
+                  </Text>
+                </View>
+                <AppButton
+                  disabled={isRemovingMembership}
+                  icon="close-circle-outline"
+                  title={t('directorAssistantCoaches.removeTeamButton')}
+                  onPress={() => confirmRemoveCoach(selectedOrganizationCoach, team)}
+                  variant="secondary"
+                />
+              </View>
+            ))}
+            <AppButton
+              disabled={isRemovingMembership}
+              icon="person-remove-outline"
+              title={t('directorAssistantCoaches.removeOrganizationButton')}
+              onPress={() => confirmRemoveCoach(selectedOrganizationCoach, null)}
+              variant="danger"
+            />
+          </View>
+        ) : null}
+
         {membershipError ? (
           <Text style={authStyles.error}>{membershipError}</Text>
         ) : null}
@@ -773,6 +949,7 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
         <AppButton
           disabled={
             isAddingMembership ||
+            isRemovingMembership ||
             (organizationCoachesQuery.data ?? []).length === 0 ||
             (teamsQuery.data ?? []).length === 0
           }
@@ -1264,6 +1441,27 @@ const styles = StyleSheet.create({
     minHeight: sizes.directorAssistantMultiline,
     paddingTop: spacing.md,
     textAlignVertical: 'top',
+  },
+  membershipCopy: {
+    flex: 1,
+    gap: spacing.tight,
+    minWidth: sizes.membershipButtonMinWidth,
+  },
+  membershipManager: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+  },
+  membershipRow: {
+    alignItems: 'center',
+    backgroundColor: colors.fieldBackground,
+    borderRadius: radii.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    padding: spacing.sm,
   },
   sectionLabel: {
     color: colors.textPrimary,

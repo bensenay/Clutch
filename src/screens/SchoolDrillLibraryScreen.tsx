@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
@@ -14,6 +14,7 @@ import type { AuthenticatedStackParamList } from '../navigation/types';
 import { isLikelyNetworkError } from '../offline/cache';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import { slateGrey, spacing } from '../theme/theme';
+import { colors, radii, sizes } from '../theme/theme';
 
 type Props = NativeStackScreenProps<
   AuthenticatedStackParamList,
@@ -24,10 +25,12 @@ type SchoolDrillRow = {
   id: string;
   team_id: string;
   name: string;
+  description: string | null;
   canvas_data: unknown;
   updated_at: string | null;
   created_at: string;
-  teams: { name: string | null } | Array<{ name: string | null }> | null;
+  team_name: string;
+  creator_name: string;
 };
 
 export function SchoolDrillLibraryScreen({ navigation }: Props) {
@@ -39,17 +42,12 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
     null,
   );
   const [duplicateError, setDuplicateError] = useState('');
+  const [search, setSearch] = useState('');
 
   const drillsQuery = useQuery({
-    queryKey: ['school-drills'],
+    queryKey: ['school-drills', activeTeam?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('drills')
-        .select(
-          'id, team_id, name, canvas_data, updated_at, created_at, teams ( name )',
-        )
-        .eq('is_published', true)
-        .order('updated_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_school_drill_library');
 
       if (error) {
         throw error;
@@ -57,6 +55,7 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
 
       return (data ?? []) as SchoolDrillRow[];
     },
+    enabled: Boolean(activeTeam),
   });
 
   async function duplicateDrill(drill: SchoolDrillRow) {
@@ -73,7 +72,7 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
         .insert({
           canvas_data: drill.canvas_data,
           created_by_user_id: session.user.id,
-          description: null,
+          description: drill.description,
           is_published: false,
           name: t('schoolDrillLibrary.duplicatedName', {
             name: drill.name,
@@ -102,6 +101,20 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
   }
 
   const drills = drillsQuery.data ?? [];
+  const filteredDrills = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase();
+
+    if (!needle) {
+      return drills;
+    }
+
+    return drills.filter((drill) =>
+      [drill.name, drill.team_name, drill.creator_name]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(needle),
+    );
+  }, [drills, search]);
 
   return (
     <AppScreen
@@ -119,6 +132,20 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
       {duplicateError ? (
         <Text style={appScreenStyles.error}>{duplicateError}</Text>
       ) : null}
+      <View style={styles.searchCard}>
+        <Text style={styles.searchLabel}>
+          {t('schoolDrillLibrary.searchLabel')}
+        </Text>
+        <TextInput
+          autoCapitalize="none"
+          autoCorrect={false}
+          onChangeText={setSearch}
+          placeholder={t('schoolDrillLibrary.searchPlaceholder')}
+          placeholderTextColor={slateGrey}
+          style={styles.searchInput}
+          value={search}
+        />
+      </View>
       {!drillsQuery.isLoading && drills.length === 0 ? (
         <EmptyState
           description={t('schoolDrillLibrary.emptyDescription')}
@@ -126,8 +153,15 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
           title={t('schoolDrillLibrary.emptyTitle')}
         />
       ) : null}
+      {!drillsQuery.isLoading && drills.length > 0 && filteredDrills.length === 0 ? (
+        <EmptyState
+          description={t('schoolDrillLibrary.noResultsDescription')}
+          icon="search-outline"
+          title={t('schoolDrillLibrary.noResultsTitle')}
+        />
+      ) : null}
       <View style={appScreenStyles.list}>
-        {drills.map((drill) => {
+        {filteredDrills.map((drill) => {
           const isOwnActiveTeamDrill = activeTeam?.id === drill.team_id;
           const canDuplicate = Boolean(activeTeam && session && !isReadOnlyTeam);
 
@@ -146,9 +180,19 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
                 <Text style={appScreenStyles.cardDescription}>
                   {t('schoolDrillLibrary.drillMeta', {
                     count: countCanvasObjects(drill.canvas_data),
-                    teamName: getDrillTeamName(drill),
+                    teamName: drill.team_name,
                   })}
                 </Text>
+                <Text style={appScreenStyles.meta}>
+                  {t('schoolDrillLibrary.creatorMeta', {
+                    creatorName: drill.creator_name,
+                  })}
+                </Text>
+                {drill.description ? (
+                  <Text style={appScreenStyles.cardDescription}>
+                    {drill.description}
+                  </Text>
+                ) : null}
               </AnimatedPressable>
               <View style={styles.rowActions}>
                 <AppButton
@@ -179,14 +223,6 @@ function countCanvasObjects(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
 }
 
-function getDrillTeamName(drill: SchoolDrillRow) {
-  const team = Array.isArray(drill.teams)
-    ? drill.teams[0] ?? null
-    : drill.teams;
-
-  return team?.name ?? '';
-}
-
 const styles = StyleSheet.create({
   ownTeamLabel: {
     color: slateGrey,
@@ -200,5 +236,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  searchCard: {
+    gap: spacing.sm,
+  },
+  searchInput: {
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    color: colors.textPrimary,
+    minHeight: sizes.input,
+    paddingHorizontal: spacing.gutter,
+  },
+  searchLabel: {
+    color: colors.textOnDark,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

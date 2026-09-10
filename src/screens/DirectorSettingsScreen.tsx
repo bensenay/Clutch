@@ -60,7 +60,7 @@ export function DirectorOrganizationSettingsSection({
   const [errorMessage, setErrorMessage] = useState('');
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['director-settings-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));

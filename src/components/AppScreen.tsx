@@ -37,6 +37,7 @@ export function AppScreen({
       <View style={styles.header}>
         <Text style={styles.eyebrow}>{t('common.brand')}</Text>
         <Text style={styles.title}>{title}</Text>
+        <View style={styles.headerRule} />
         {description ? (
           <Text style={styles.description}>{description}</Text>
         ) : null}
@@ -55,6 +56,11 @@ export const appScreenStyles = StyleSheet.create({
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.lg,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
   },
   cardDescription: {
     color: slateGrey,
@@ -121,6 +127,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     maxWidth: 560,
     width: '100%',
+  },
+  headerRule: {
+    backgroundColor: goalRed,
+    borderRadius: 2,
+    height: 3,
+    marginTop: spacing.xs,
+    width: 42,
   },
   title: {
     color: colors.textOnDark,

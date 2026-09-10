@@ -134,6 +134,9 @@ export function DrillLibraryScreen({ navigation }: Props) {
                 count: countCanvasObjects(drill.canvas_data),
               })}
             </Text>
+            {drill.description ? (
+              <Text style={appScreenStyles.meta}>{drill.description}</Text>
+            ) : null}
           </AnimatedPressable>
         ))}
       </View>

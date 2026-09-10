@@ -38,7 +38,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
   const { setActiveTeam } = useActiveTeam();
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['director-all-teams-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -103,6 +103,13 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
 
   return (
     <AppScreen
+      action={
+        <AppButton
+          icon="add-circle-outline"
+          title={t('teamForm.addButton')}
+          onPress={() => navigation.navigate('TeamForm')}
+        />
+      }
       description={t('directorAllTeams.description')}
       title={t('directorAllTeams.title')}
     >
@@ -116,6 +123,13 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
       ) : null}
       {!teamsQuery.isLoading && teamsQuery.data?.length === 0 ? (
         <EmptyState
+          action={
+            <AppButton
+              icon="add-circle-outline"
+              title={t('teamForm.addFirstButton')}
+              onPress={() => navigation.navigate('TeamForm')}
+            />
+          }
           description={t('directorAllTeams.emptyDescription')}
           icon="school-outline"
           title={t('directorAllTeams.emptyTitle')}

@@ -3,7 +3,7 @@ import { colors, goalRed, radii, spacing } from '../theme/theme';
 import { AnimatedPressable } from './AnimatedPressable';
 import { AppIcon, type AppIconName } from './AppIcon';
 
-type AppButtonVariant = 'primary' | 'secondary' | 'ghost';
+type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 type AppButtonProps = {
   disabled?: boolean;
@@ -22,8 +22,12 @@ export function AppButton({
   title,
   variant = 'primary',
 }: AppButtonProps) {
-  const isPrimary = variant === 'primary';
-  const foregroundColor = isPrimary ? colors.textOnDark : goalRed;
+  const foregroundColor =
+    variant === 'primary' || variant === 'danger'
+      ? colors.textOnDark
+      : variant === 'secondary'
+        ? colors.textPrimary
+        : goalRed;
 
   return (
     <AnimatedPressable
@@ -57,6 +61,9 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
+  danger: {
+    backgroundColor: goalRed,
+  },
   ghost: {
     backgroundColor: 'transparent',
   },
@@ -68,8 +75,8 @@ const styles = StyleSheet.create({
     backgroundColor: goalRed,
   },
   secondary: {
-    backgroundColor: colors.dangerSoft,
-    borderColor: goalRed,
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
     borderWidth: 1,
   },
 });

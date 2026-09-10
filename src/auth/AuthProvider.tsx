@@ -68,6 +68,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      if (
+        !nextSession.user.email ||
+        intent.email.toLocaleLowerCase() !==
+          nextSession.user.email.toLocaleLowerCase()
+      ) {
+        try {
+          await pendingOnboarding.clear();
+        } catch (clearError) {
+          console.warn('Unable to clear stale onboarding intent:', clearError);
+        }
+        return;
+      }
+
       const functionName =
         intent.type === 'assistant_join_team'
           ? 'join-team-as-assistant'

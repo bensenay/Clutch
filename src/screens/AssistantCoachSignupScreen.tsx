@@ -46,6 +46,19 @@ export function AssistantCoachSignupScreen({ navigation }: Props) {
     setIsSubmitting(true);
     beginOnboarding();
 
+    try {
+      await pendingOnboarding.save({
+        type: 'assistant_join_team',
+        email: trimmedEmail.toLocaleLowerCase(),
+        payload: { teamJoinCode: trimmedTeamJoinCode },
+      });
+    } catch {
+      setError(t('common.pendingOnboardingSaveError'));
+      setIsSubmitting(false);
+      endOnboarding();
+      return;
+    }
+
     let activeSession = session;
 
     if (!activeSession) {
@@ -65,18 +78,6 @@ export function AssistantCoachSignupScreen({ navigation }: Props) {
     }
 
     if (!activeSession) {
-      try {
-        await pendingOnboarding.save({
-          type: 'assistant_join_team',
-          payload: { teamJoinCode: trimmedTeamJoinCode },
-        });
-      } catch {
-        setError(t('common.pendingOnboardingSaveError'));
-        setIsSubmitting(false);
-        endOnboarding();
-        return;
-      }
-
       setConfirmationMessage(
         t('assistantCoachSignup.confirmationPendingMessage'),
       );
@@ -108,6 +109,11 @@ export function AssistantCoachSignupScreen({ navigation }: Props) {
       return;
     }
 
+    try {
+      await pendingOnboarding.clear();
+    } catch (clearError) {
+      console.warn('Unable to clear completed onboarding intent:', clearError);
+    }
     endOnboarding();
   }
 

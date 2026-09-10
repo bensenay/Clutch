@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { AppButton } from '../components/AppButton';
@@ -42,8 +42,11 @@ type GamePayload = {
   is_home: boolean;
   result: GameResult;
   opponent_scouting_notes: string | null;
+  players_to_watch: string | null;
   pre_game_plan: string | null;
   post_game_notes: string | null;
+  what_worked: string | null;
+  what_to_fix: string | null;
 };
 
 type GameResult = Game['result'];
@@ -96,8 +99,11 @@ export function GameFormScreen({ navigation, route }: Props) {
   const [isHome, setIsHome] = useState(true);
   const [result, setResult] = useState<GameResult>(null);
   const [opponentScoutingNotes, setOpponentScoutingNotes] = useState('');
+  const [playersToWatch, setPlayersToWatch] = useState('');
   const [preGamePlan, setPreGamePlan] = useState('');
   const [postGameNotes, setPostGameNotes] = useState('');
+  const [whatWorked, setWhatWorked] = useState('');
+  const [whatToFix, setWhatToFix] = useState('');
   const [error, setError] = useState('');
   const [exportError, setExportError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,7 +120,7 @@ export function GameFormScreen({ navigation, route }: Props) {
         const { data, error: loadError } = await supabase
           .from('games')
           .select(
-            'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
+            'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, players_to_watch, pre_game_plan, post_game_notes, what_worked, what_to_fix, created_at',
           )
           .eq('id', gameId)
           .single();
@@ -163,8 +169,11 @@ export function GameFormScreen({ navigation, route }: Props) {
     setIsHome(game.is_home);
     setResult(game.result);
     setOpponentScoutingNotes(game.opponent_scouting_notes ?? '');
+    setPlayersToWatch(game.players_to_watch ?? '');
     setPreGamePlan(game.pre_game_plan ?? '');
     setPostGameNotes(game.post_game_notes ?? '');
+    setWhatWorked(game.what_worked ?? '');
+    setWhatToFix(game.what_to_fix ?? '');
   }, [gameQuery.data]);
 
   function nullableText(value: string) {
@@ -191,8 +200,11 @@ export function GameFormScreen({ navigation, route }: Props) {
       is_home: isHome,
       result,
       opponent_scouting_notes: nullableText(opponentScoutingNotes),
+      players_to_watch: nullableText(playersToWatch),
       pre_game_plan: nullableText(preGamePlan),
       post_game_notes: nullableText(postGameNotes),
+      what_worked: nullableText(whatWorked),
+      what_to_fix: nullableText(whatToFix),
     };
 
     return payload;
@@ -239,8 +251,11 @@ export function GameFormScreen({ navigation, route }: Props) {
           location: nullableText(location),
           isHome,
           opponentScoutingNotes: nullableText(opponentScoutingNotes),
+          playersToWatch: nullableText(playersToWatch),
           preGamePlan: nullableText(preGamePlan),
           postGameNotes: nullableText(postGameNotes),
+          whatWorked: nullableText(whatWorked),
+          whatToFix: nullableText(whatToFix),
         },
         lineup: lineupData as LineupExportRow | null,
         players: (playerData ?? []) as Player[],
@@ -290,7 +305,7 @@ export function GameFormScreen({ navigation, route }: Props) {
     }
 
     await queryClient.invalidateQueries({
-      queryKey: ['games', activeTeam?.id],
+      queryKey: ['calendar-games'],
     });
     await queryClient.invalidateQueries({
       queryKey: ['team-dashboard-games', activeTeam?.id],
@@ -306,6 +321,50 @@ export function GameFormScreen({ navigation, route }: Props) {
     }
 
     navigation.replace('MainTabs', { screen: 'GameDayTab' });
+  }
+
+  async function deleteGame() {
+    if (!gameId) {
+      return;
+    }
+
+    setError('');
+    setIsSubmitting(true);
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (deleteError) {
+      setError(
+        isLikelyNetworkError(deleteError)
+          ? t('offline.writeBlocked')
+          : t('gameForm.deleteError'),
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['games'] });
+    await queryClient.invalidateQueries({ queryKey: ['calendar-games'] });
+    await queryClient.invalidateQueries({ queryKey: ['team-dashboard-games'] });
+    setIsSubmitting(false);
+    navigation.replace('MainTabs', { screen: 'GameDayTab' });
+  }
+
+  function confirmDeleteGame() {
+    Alert.alert(
+      t('gameForm.deleteConfirmTitle'),
+      t('gameForm.deleteConfirmDescription'),
+      [
+        { style: 'cancel', text: t('common.cancel') },
+        {
+          style: 'destructive',
+          text: t('gameForm.deleteConfirmButton'),
+          onPress: () => void deleteGame(),
+        },
+      ],
+    );
   }
 
   if (!activeTeam) {
@@ -369,6 +428,15 @@ export function GameFormScreen({ navigation, route }: Props) {
           value={opponentScoutingNotes}
         />
         <FormField
+          label={t('gameForm.playersToWatchLabel')}
+          multiline
+          onChangeText={setPlayersToWatch}
+          placeholder={t('gameForm.playersToWatchPlaceholder')}
+          style={styles.multiline}
+          editable={!isReadOnly}
+          value={playersToWatch}
+        />
+        <FormField
           label={t('gameForm.preGamePlanLabel')}
           multiline
           onChangeText={setPreGamePlan}
@@ -385,6 +453,24 @@ export function GameFormScreen({ navigation, route }: Props) {
           style={styles.multiline}
           editable={!isReadOnly}
           value={postGameNotes}
+        />
+        <FormField
+          label={t('gameForm.whatWorkedLabel')}
+          multiline
+          onChangeText={setWhatWorked}
+          placeholder={t('gameForm.whatWorkedPlaceholder')}
+          style={styles.multiline}
+          editable={!isReadOnly}
+          value={whatWorked}
+        />
+        <FormField
+          label={t('gameForm.whatToFixLabel')}
+          multiline
+          onChangeText={setWhatToFix}
+          placeholder={t('gameForm.whatToFixPlaceholder')}
+          style={styles.multiline}
+          editable={!isReadOnly}
+          value={whatToFix}
         />
         <View style={styles.selectorGroup}>
           <Text style={styles.selectorLabel}>
@@ -494,6 +580,15 @@ export function GameFormScreen({ navigation, route }: Props) {
               }
               onPress={() => void handleExport()}
             />
+            {isReadOnly ? null : (
+              <AppButton
+                disabled={isSubmitting || gameQuery.isLoading || isExporting}
+                icon="trash-outline"
+                title={t('gameForm.deleteButton')}
+                onPress={confirmDeleteGame}
+                variant="danger"
+              />
+            )}
           </>
         ) : null}
       </View>
@@ -672,8 +767,11 @@ function buildGamePlanExportHtml({
     location: string | null;
     isHome: boolean;
     opponentScoutingNotes: string | null;
+    playersToWatch: string | null;
     preGamePlan: string | null;
     postGameNotes: string | null;
+    whatWorked: string | null;
+    whatToFix: string | null;
   };
   lineup: LineupExportRow | null;
   players: Player[];
@@ -731,11 +829,20 @@ function buildGamePlanExportHtml({
         <h2>${escapeHtml(t('gameForm.opponentScoutingNotesLabel'))}</h2>
         ${renderNote(game.opponentScoutingNotes, t)}
 
+        <h2>${escapeHtml(t('gameForm.playersToWatchLabel'))}</h2>
+        ${renderNote(game.playersToWatch, t)}
+
         <h2>${escapeHtml(t('gameForm.preGamePlanLabel'))}</h2>
         ${renderNote(game.preGamePlan, t)}
 
         <h2>${escapeHtml(t('gameForm.postGameNotesLabel'))}</h2>
         ${renderNote(game.postGameNotes, t)}
+
+        <h2>${escapeHtml(t('gameForm.whatWorkedLabel'))}</h2>
+        ${renderNote(game.whatWorked, t)}
+
+        <h2>${escapeHtml(t('gameForm.whatToFixLabel'))}</h2>
+        ${renderNote(game.whatToFix, t)}
       </body>
     </html>
   `;

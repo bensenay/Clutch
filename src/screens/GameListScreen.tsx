@@ -91,8 +91,11 @@ export type Game = {
   is_home: boolean;
   result: 'win' | 'loss' | 'tie' | null;
   opponent_scouting_notes: string | null;
+  players_to_watch: string | null;
   pre_game_plan: string | null;
   post_game_notes: string | null;
+  what_worked: string | null;
+  what_to_fix: string | null;
   created_at: string;
 };
 
@@ -162,7 +165,7 @@ export function GameListScreen({ navigation }: Props) {
   const [cachedGamesAt, setCachedGamesAt] = useState<string | null>(null);
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['schedule-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -347,7 +350,7 @@ export function GameListScreen({ navigation }: Props) {
         const { data, error } = await supabase
           .from('games')
           .select(
-            'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, pre_game_plan, post_game_notes, created_at',
+            'id, team_id, opponent_name, game_date, location, is_home, result, opponent_scouting_notes, players_to_watch, pre_game_plan, post_game_notes, what_worked, what_to_fix, created_at',
           )
           .in('team_id', selectedTeamIds)
           .order('game_date', { ascending: true });

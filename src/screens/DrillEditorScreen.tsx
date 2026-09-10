@@ -24,7 +24,6 @@ import Svg, {
   Path,
   Polygon,
   Rect,
-  Text as SvgText,
 } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -63,17 +62,18 @@ type PlacedObjectType = 'player_token' | 'puck' | 'cone' | 'net' | 'text';
 type PathObjectType = 'skate_path' | 'pass_line';
 type ZoneObjectType = 'shaded_zone';
 type DrillObjectType = PlacedObjectType | PathObjectType | ZoneObjectType;
-type PlayerTokenLabel = 'F' | 'D' | 'G' | 'C';
-type SkatePathStyle = 'straight' | 'curved' | 'backward';
+type PlayerTokenLabel = 'F' | 'F1' | 'F2' | 'F3' | 'D' | 'D1' | 'D2' | 'G' | 'C';
+type PathStyle = 'straight' | 'curved' | 'backward' | 'freehand';
+type MarkerVariant = 'single' | 'group';
 type PathPoint = {
   x: number;
   y: number;
 };
 type ToolChoice =
   | { type: 'player_token'; color: string; label: PlayerTokenLabel }
-  | { type: 'puck' | 'cone' | 'net' }
-  | { type: 'skate_path'; style: SkatePathStyle }
-  | { type: 'pass_line' }
+  | { type: 'puck' | 'cone'; variant: MarkerVariant }
+  | { type: 'net' }
+  | { type: 'skate_path' | 'pass_line'; style: PathStyle }
   | { type: 'text' }
   | { type: 'shaded_zone' };
 type PlaceToolChoice = Extract<
@@ -93,6 +93,8 @@ type PlacedDrillObject = {
   color: string;
   label?: PlayerTokenLabel;
   text?: string;
+  rotation: number;
+  variant?: MarkerVariant;
 };
 
 type SkatePathObject = {
@@ -100,7 +102,7 @@ type SkatePathObject = {
   type: 'skate_path';
   points: PathPoint[];
   color: string;
-  style: SkatePathStyle;
+  style: PathStyle;
 };
 
 type PassLineObject = {
@@ -108,7 +110,7 @@ type PassLineObject = {
   type: 'pass_line';
   points: PathPoint[];
   color: string;
-  style: 'dashed';
+  style: PathStyle;
 };
 
 type PathDrillObject = SkatePathObject | PassLineObject;
@@ -171,11 +173,15 @@ export function DrillEditorScreen({ navigation, route }: Props) {
   const isReadOnly = isReadOnlyTeam || Boolean(route.params?.readOnly);
   const suppressNextCanvasPress = useRef(false);
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [objects, setObjects] = useState<DrillCanvasObject[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedTool, setSelectedTool] = useState<ToolChoice | null>(null);
   const [showPlayerChoices, setShowPlayerChoices] = useState(false);
   const [showSkateChoices, setShowSkateChoices] = useState(false);
+  const [showPassChoices, setShowPassChoices] = useState(false);
+  const [showPuckChoices, setShowPuckChoices] = useState(false);
+  const [showConeChoices, setShowConeChoices] = useState(false);
   const [tokenColor, setTokenColor] = useState(PLAYER_TOKEN_COLOR);
   const [draftPath, setDraftPath] = useState<PathDrillObject | null>(null);
   const [draftZonePoints, setDraftZonePoints] = useState<PathPoint[]>([]);
@@ -193,6 +199,8 @@ export function DrillEditorScreen({ navigation, route }: Props) {
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const undoStack = useRef<DrillCanvasObject[][]>([]);
+  const redoStack = useRef<DrillCanvasObject[][]>([]);
   const isLandscape = windowDimensions.width > windowDimensions.height;
   const landscapeCanvasHeight = Math.max(
     MIN_LANDSCAPE_CANVAS_HEIGHT,
@@ -252,8 +260,11 @@ export function DrillEditorScreen({ navigation, route }: Props) {
     }
 
     setName(drillQuery.data.name);
+    setDescription(drillQuery.data.description ?? '');
     setIsPublished(drillQuery.data.is_published);
     setObjects(normalizeCanvasData(drillQuery.data.canvas_data));
+    undoStack.current = [];
+    redoStack.current = [];
     setSelectedObjectId(null);
   }, [drillQuery.data]);
 
@@ -261,6 +272,52 @@ export function DrillEditorScreen({ navigation, route }: Props) {
     () => objects.find((object) => object.id === selectedObjectId) ?? null,
     [objects, selectedObjectId],
   );
+
+  function commitObjects(
+    update: (currentObjects: DrillCanvasObject[]) => DrillCanvasObject[],
+  ) {
+    setObjects((currentObjects) => {
+      const nextObjects = update(currentObjects);
+
+      if (nextObjects === currentObjects) {
+        return currentObjects;
+      }
+
+      undoStack.current = [...undoStack.current.slice(-49), currentObjects];
+      redoStack.current = [];
+      return nextObjects;
+    });
+  }
+
+  function undo() {
+    const previousObjects = undoStack.current.at(-1);
+
+    if (!previousObjects) {
+      return;
+    }
+
+    setObjects((currentObjects) => {
+      redoStack.current = [...redoStack.current.slice(-49), currentObjects];
+      undoStack.current = undoStack.current.slice(0, -1);
+      return previousObjects;
+    });
+    setSelectedObjectId(null);
+  }
+
+  function redo() {
+    const nextObjects = redoStack.current.at(-1);
+
+    if (!nextObjects) {
+      return;
+    }
+
+    setObjects((currentObjects) => {
+      undoStack.current = [...undoStack.current.slice(-49), currentObjects];
+      redoStack.current = redoStack.current.slice(0, -1);
+      return nextObjects;
+    });
+    setSelectedObjectId(null);
+  }
 
   function handleCanvasLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout;
@@ -320,7 +377,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
       toRinkY(locationY, canvasSize),
     );
 
-    setObjects((currentObjects) => [...currentObjects, nextObject]);
+    commitObjects((currentObjects) => [...currentObjects, nextObject]);
     setSelectedObjectId(nextObject.id);
   }
 
@@ -371,7 +428,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
         points: simplifyPathPoints(currentPath),
       };
 
-      setObjects((currentObjects) => [...currentObjects, finalPath]);
+      commitObjects((currentObjects) => [...currentObjects, finalPath]);
       setSelectedObjectId(finalPath.id);
 
       return null;
@@ -379,7 +436,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
   }
 
   function moveObject(id: string, nextX: number, nextY: number) {
-    setObjects((currentObjects) =>
+    commitObjects((currentObjects) =>
       currentObjects.map((object) =>
         object.id === id && isPlacedObject(object)
           ? {
@@ -397,7 +454,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
       return;
     }
 
-    setObjects((currentObjects) =>
+    commitObjects((currentObjects) =>
       currentObjects.filter((object) => object.id !== selectedObjectId),
     );
     setSelectedObjectId(null);
@@ -408,9 +465,31 @@ export function DrillEditorScreen({ navigation, route }: Props) {
   }
 
   function updateObjectColor(id: string, color: string) {
-    setObjects((currentObjects) =>
+    commitObjects((currentObjects) =>
       currentObjects.map((object) =>
         object.id === id ? { ...object, color } : object,
+      ),
+    );
+  }
+
+  function duplicateSelectedObject() {
+    if (!selectedObject || isReadOnly) {
+      return;
+    }
+
+    const duplicate = duplicateCanvasObject(selectedObject);
+    commitObjects((currentObjects) => [...currentObjects, duplicate]);
+    setSelectedObjectId(duplicate.id);
+  }
+
+  function rotateSelectedObject() {
+    if (!selectedObject || isReadOnly) {
+      return;
+    }
+
+    commitObjects((currentObjects) =>
+      currentObjects.map((object) =>
+        object.id === selectedObject.id ? rotateCanvasObject(object, 15) : object,
       ),
     );
   }
@@ -435,7 +514,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
     }
 
     if (pendingText.id) {
-      setObjects((currentObjects) =>
+      commitObjects((currentObjects) =>
         currentObjects.map((object) =>
           object.id === pendingText.id && isPlacedObject(object)
             ? {
@@ -450,13 +529,14 @@ export function DrillEditorScreen({ navigation, route }: Props) {
       const textObject: PlacedDrillObject = {
         color: TEXT_COLOR,
         id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        rotation: 0,
         text: textDraft.trim(),
         type: 'text',
         x: pendingText.x,
         y: pendingText.y,
       };
 
-      setObjects((currentObjects) => [...currentObjects, textObject]);
+      commitObjects((currentObjects) => [...currentObjects, textObject]);
       setSelectedObjectId(textObject.id);
     }
 
@@ -482,7 +562,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
       type: 'shaded_zone',
     };
 
-    setObjects((currentObjects) => [...currentObjects, zone]);
+    commitObjects((currentObjects) => [...currentObjects, zone]);
     setSelectedObjectId(zone.id);
     setDraftZonePoints([]);
   }
@@ -529,6 +609,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           .from('drills')
           .update({
             canvas_data: objects,
+            description: description.trim() || null,
             is_published: isPublished,
             name: name.trim(),
             updated_at: new Date().toISOString(),
@@ -544,7 +625,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           .insert({
             canvas_data: objects,
             created_by_user_id: session.user.id,
-            description: null,
+            description: description.trim() || null,
             is_published: false,
             name: name.trim(),
             team_id: activeTeam.id,
@@ -683,6 +764,17 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           style={styles.input}
           value={name}
         />
+        <Text style={styles.label}>{t('drillEditor.descriptionLabel')}</Text>
+        <TextInput
+          autoCapitalize="sentences"
+          editable={!isReadOnly}
+          multiline
+          onChangeText={setDescription}
+          placeholder={t('drillEditor.descriptionPlaceholder')}
+          placeholderTextColor={slateGrey}
+          style={[styles.input, styles.descriptionInput]}
+          value={description}
+        />
       </View>
       )}
       {drillId && !isReadOnly ? (
@@ -764,13 +856,45 @@ export function DrillEditorScreen({ navigation, route }: Props) {
               })
             : t('drillEditor.noSelectionLabel')}
         </Text>
-        {selectedObject && !isReadOnly ? (
-          <AppButton
-            icon="trash-outline"
-            title={t('drillEditor.deleteButton')}
-            onPress={deleteSelectedObject}
-          />
-        ) : null}
+        {isReadOnly ? null : (
+          <View style={styles.contextActions}>
+            <AppButton
+              disabled={undoStack.current.length === 0}
+              icon="arrow-undo-outline"
+              title={t('drillEditor.undoButton')}
+              onPress={undo}
+              variant="secondary"
+            />
+            <AppButton
+              disabled={redoStack.current.length === 0}
+              icon="arrow-redo-outline"
+              title={t('drillEditor.redoButton')}
+              onPress={redo}
+              variant="secondary"
+            />
+            {selectedObject ? (
+              <>
+                <AppButton
+                  icon="copy-outline"
+                  title={t('drillEditor.duplicateButton')}
+                  onPress={duplicateSelectedObject}
+                  variant="secondary"
+                />
+                <AppButton
+                  icon="refresh-outline"
+                  title={t('drillEditor.rotateButton')}
+                  onPress={rotateSelectedObject}
+                  variant="secondary"
+                />
+                <AppButton
+                  icon="trash-outline"
+                  title={t('drillEditor.deleteButton')}
+                  onPress={deleteSelectedObject}
+                />
+              </>
+            ) : null}
+          </View>
+        )}
       </View>
       {pendingText && !isReadOnly ? (
         <View style={styles.inlineEditor}>
@@ -835,18 +959,33 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           selectedTool={selectedTool}
           showPlayerChoices={showPlayerChoices}
           showSkateChoices={showSkateChoices}
+          showPassChoices={showPassChoices}
+          showPuckChoices={showPuckChoices}
+          showConeChoices={showConeChoices}
           tokenColor={tokenColor}
           onSelectTokenColor={setTokenColor}
           onSelectTool={(tool) => {
             setSelectedTool(tool);
             setShowPlayerChoices(false);
             setShowSkateChoices(false);
+            setShowPassChoices(false);
+            setShowPuckChoices(false);
+            setShowConeChoices(false);
           }}
           onTogglePlayerChoices={() =>
             setShowPlayerChoices((currentValue) => !currentValue)
           }
           onToggleSkateChoices={() =>
             setShowSkateChoices((currentValue) => !currentValue)
+          }
+          onTogglePassChoices={() =>
+            setShowPassChoices((currentValue) => !currentValue)
+          }
+          onTogglePuckChoices={() =>
+            setShowPuckChoices((currentValue) => !currentValue)
+          }
+          onToggleConeChoices={() =>
+            setShowConeChoices((currentValue) => !currentValue)
           }
         />
       )}
@@ -1122,20 +1261,32 @@ function DrillToolbar({
   selectedTool,
   showPlayerChoices,
   showSkateChoices,
+  showPassChoices,
+  showPuckChoices,
+  showConeChoices,
   tokenColor,
   onSelectTokenColor,
   onSelectTool,
   onTogglePlayerChoices,
   onToggleSkateChoices,
+  onTogglePassChoices,
+  onTogglePuckChoices,
+  onToggleConeChoices,
 }: {
   selectedTool: ToolChoice | null;
   showPlayerChoices: boolean;
   showSkateChoices: boolean;
+  showPassChoices: boolean;
+  showPuckChoices: boolean;
+  showConeChoices: boolean;
   tokenColor: string;
   onSelectTokenColor: (color: string) => void;
   onSelectTool: (tool: ToolChoice) => void;
   onTogglePlayerChoices: () => void;
   onToggleSkateChoices: () => void;
+  onTogglePassChoices: () => void;
+  onTogglePuckChoices: () => void;
+  onToggleConeChoices: () => void;
 }) {
   const { t } = useTranslation();
   const selectedPlayerLabel =
@@ -1145,7 +1296,7 @@ function DrillToolbar({
     <View style={styles.toolbar}>
       {showSkateChoices ? (
         <View style={styles.pathChoicePanel}>
-          {(['straight', 'curved', 'backward'] as SkatePathStyle[]).map(
+          {(['straight', 'curved', 'backward', 'freehand'] as PathStyle[]).map(
             (style) => (
               <Pressable
                 accessibilityRole="button"
@@ -1161,10 +1312,38 @@ function DrillToolbar({
           )}
         </View>
       ) : null}
+      {showPassChoices ? (
+        <View style={styles.pathChoicePanel}>
+          {(['straight', 'curved', 'backward', 'freehand'] as PathStyle[]).map(
+            (style) => (
+              <Pressable
+                accessibilityRole="button"
+                key={style}
+                onPress={() => onSelectTool({ type: 'pass_line', style })}
+                style={styles.pathChoice}
+              >
+                <Text style={styles.pathChoiceText}>
+                  {t(`drillEditor.pathStyles.${style}`)}
+                </Text>
+              </Pressable>
+            ),
+          )}
+        </View>
+      ) : null}
+      {showPuckChoices ? (
+        <VariantChoicePanel
+          onSelect={(variant) => onSelectTool({ type: 'puck', variant })}
+        />
+      ) : null}
+      {showConeChoices ? (
+        <VariantChoicePanel
+          onSelect={(variant) => onSelectTool({ type: 'cone', variant })}
+        />
+      ) : null}
       {showPlayerChoices ? (
         <View style={styles.playerChoicePanel}>
           <View style={styles.playerChoiceRow}>
-            {(['F', 'D', 'G', 'C'] as PlayerTokenLabel[]).map((label) => (
+            {(['F1', 'F2', 'F3', 'D1', 'D2', 'C', 'G'] as PlayerTokenLabel[]).map((label) => (
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: selectedPlayerLabel === label }}
@@ -1203,6 +1382,7 @@ function DrillToolbar({
           icon="person-outline"
           isSelected={selectedTool?.type === 'player_token'}
           label={t('drillEditor.tools.playerToken')}
+          onLongPress={onTogglePlayerChoices}
           onPress={onTogglePlayerChoices}
         />
         <ToolButton
@@ -1216,19 +1396,22 @@ function DrillToolbar({
           icon="arrow-forward-outline"
           isSelected={selectedTool?.type === 'pass_line'}
           label={t('drillEditor.tools.passLine')}
-          onPress={() => onSelectTool({ type: 'pass_line' })}
+          onLongPress={onTogglePassChoices}
+          onPress={() => onSelectTool({ type: 'pass_line', style: 'straight' })}
         />
         <ToolButton
           icon="ellipse"
           isSelected={selectedTool?.type === 'puck'}
           label={t('drillEditor.tools.puck')}
-          onPress={() => onSelectTool({ type: 'puck' })}
+          onLongPress={onTogglePuckChoices}
+          onPress={() => onSelectTool({ type: 'puck', variant: 'single' })}
         />
         <ToolButton
           icon="triangle-outline"
           isSelected={selectedTool?.type === 'cone'}
           label={t('drillEditor.tools.cone')}
-          onPress={() => onSelectTool({ type: 'cone' })}
+          onLongPress={onToggleConeChoices}
+          onPress={() => onSelectTool({ type: 'cone', variant: 'single' })}
         />
         <ToolButton
           icon="file-tray-outline"
@@ -1280,6 +1463,31 @@ function ColorPicker({
           />
         );
       })}
+    </View>
+  );
+}
+
+function VariantChoicePanel({
+  onSelect,
+}: {
+  onSelect: (variant: MarkerVariant) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.pathChoicePanel}>
+      {(['single', 'group'] as MarkerVariant[]).map((variant) => (
+        <Pressable
+          accessibilityRole="button"
+          key={variant}
+          onPress={() => onSelect(variant)}
+          style={styles.pathChoice}
+        >
+          <Text style={styles.pathChoiceText}>
+            {t(`drillEditor.markerVariants.${variant}`)}
+          </Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -1353,6 +1561,7 @@ function DrillObjectView({
           {
             left: toScreenX(object.x, canvasSize) - OBJECT_SIZE / 2,
             top: toScreenY(object.y, canvasSize) - OBJECT_SIZE / 2,
+            transform: [{ rotate: `${object.rotation}deg` }],
           },
         ]}
       >
@@ -1448,6 +1657,7 @@ function DraggableObjectView({
         style={[
           styles.object,
           animatedStyle,
+          { transform: [{ rotate: `${object.rotation}deg` }] },
           styles.objectSelected,
         ]}
       >
@@ -1467,6 +1677,16 @@ function ObjectShape({ object }: { object: PlacedDrillObject }) {
   }
 
   if (object.type === 'puck') {
+    if (object.variant === 'group') {
+      return (
+        <View style={styles.puckGroup}>
+          <View style={[styles.puck, { backgroundColor: object.color }]} />
+          <View style={[styles.puck, { backgroundColor: object.color }]} />
+          <View style={[styles.puck, { backgroundColor: object.color }]} />
+        </View>
+      );
+    }
+
     return <View style={[styles.puck, { backgroundColor: object.color }]} />;
   }
 
@@ -1479,19 +1699,17 @@ function ObjectShape({ object }: { object: PlacedDrillObject }) {
   }
 
   if (object.type === 'cone') {
-    return (
-      <Svg height={19} viewBox="0 0 24 28" width={17}>
-        <Path
-          d="M12 3 L19 22 L5 22 Z"
-          fill={object.color}
-          stroke="#8a5a0a"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-        />
-        <Line stroke="#ffffff" strokeWidth={2} x1={8} x2={16} y1={13} y2={13} />
-        <Rect fill="#8a5a0a" height={3} rx={1.5} width={20} x={2} y={22} />
-      </Svg>
-    );
+    if (object.variant === 'group') {
+      return (
+        <View style={styles.coneGroup}>
+          <ConeShape color={object.color} />
+          <ConeShape color={object.color} />
+          <ConeShape color={object.color} />
+        </View>
+      );
+    }
+
+    return <ConeShape color={object.color} />;
   }
 
   return (
@@ -1510,19 +1728,24 @@ function ObjectShape({ object }: { object: PlacedDrillObject }) {
       <Line stroke="#9db2c1" strokeWidth={1.5} x1="22" x2="22" y1="10" y2="27" />
       <Line stroke="#9db2c1" strokeWidth={1.5} x1="29" x2="33" y1="10" y2="27" />
       <Rect fill={object.color} height={5} rx={2} width={34} x={5} y={6} />
-      <SvgText
-        fill={object.color}
-        fontFamily={fonts.display}
-        fontSize={8}
-        fontWeight="900"
-        textAnchor="middle"
-        x="22"
-        y="32"
-      >
-        NET
-      </SvgText>
     </Svg>
   );
+}
+
+function ConeShape({ color }: { color: string }) {
+    return (
+      <Svg height={19} viewBox="0 0 24 28" width={17}>
+        <Path
+          d="M12 3 L19 22 L5 22 Z"
+          fill={color}
+          stroke="#8a5a0a"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+        />
+        <Line stroke="#ffffff" strokeWidth={2} x1={8} x2={16} y1={13} y2={13} />
+        <Rect fill="#8a5a0a" height={3} rx={1.5} width={20} x={2} y={22} />
+      </Svg>
+    );
 }
 
 function makeCanvasObject(
@@ -1534,6 +1757,7 @@ function makeCanvasObject(
     id: `${tool.type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     x,
     y,
+    rotation: 0,
   };
 
   if (tool.type === 'player_token') {
@@ -1546,11 +1770,11 @@ function makeCanvasObject(
   }
 
   if (tool.type === 'puck') {
-    return { ...base, color: PUCK_COLOR, type: 'puck' };
+    return { ...base, color: PUCK_COLOR, type: 'puck', variant: tool.variant };
   }
 
   if (tool.type === 'cone') {
-    return { ...base, color: CONE_COLOR, type: 'cone' };
+    return { ...base, color: CONE_COLOR, type: 'cone', variant: tool.variant };
   }
 
   return { ...base, color: NET_COLOR, type: 'net' };
@@ -1577,7 +1801,7 @@ function makePathObject(
   return {
     ...base,
     color: PASS_LINE_COLOR,
-    style: 'dashed',
+    style: tool.style,
     type: 'pass_line',
   };
 }
@@ -1611,7 +1835,7 @@ function normalizeCanvasData(value: unknown): DrillCanvasObject[] {
                 ? entry.id
                 : `${entry.type}-${Math.random().toString(36).slice(2, 8)}`,
             points,
-            style: isSkatePathStyle(entry.style) ? entry.style : 'curved',
+            style: isPathStyle(entry.style) ? entry.style : 'curved',
             type: 'skate_path',
           },
         ];
@@ -1626,7 +1850,7 @@ function normalizeCanvasData(value: unknown): DrillCanvasObject[] {
               ? entry.id
               : `${entry.type}-${Math.random().toString(36).slice(2, 8)}`,
           points,
-          style: 'dashed',
+          style: isPathStyle(entry.style) ? entry.style : 'straight',
           type: 'pass_line',
         },
       ];
@@ -1672,8 +1896,13 @@ function normalizeCanvasData(value: unknown): DrillCanvasObject[] {
             ? entry.id
             : `${entry.type}-${Math.random().toString(36).slice(2, 8)}`,
         label: isPlayerTokenLabel(entry.label) ? entry.label : undefined,
+        rotation:
+          typeof entry.rotation === 'number' && Number.isFinite(entry.rotation)
+            ? entry.rotation % 360
+            : 0,
         text: typeof entry.text === 'string' ? entry.text : undefined,
         type: entry.type,
+        variant: isMarkerVariant(entry.variant) ? entry.variant : 'single',
         x: clamp(x, 0, RINK_WIDTH),
         y: clamp(y, 0, RINK_HEIGHT),
       },
@@ -1757,12 +1986,23 @@ function isShadedZoneObject(
   return object.type === 'shaded_zone';
 }
 
-function isSkatePathStyle(value: unknown): value is SkatePathStyle {
-  return value === 'straight' || value === 'curved' || value === 'backward';
+function isPathStyle(value: unknown): value is PathStyle {
+  return (
+    value === 'straight' ||
+    value === 'curved' ||
+    value === 'backward' ||
+    value === 'freehand'
+  );
 }
 
 function isPlayerTokenLabel(value: unknown): value is PlayerTokenLabel {
-  return value === 'F' || value === 'D' || value === 'G' || value === 'C';
+  return ['F', 'F1', 'F2', 'F3', 'D', 'D1', 'D2', 'G', 'C'].includes(
+    String(value),
+  );
+}
+
+function isMarkerVariant(value: unknown): value is MarkerVariant {
+  return value === 'single' || value === 'group';
 }
 
 function fallbackColor(type: DrillObjectType) {
@@ -1817,7 +2057,7 @@ function makePointLineData(points: PathPoint[]) {
 }
 
 function getRenderablePathPoints(pathObject: PathDrillObject) {
-  if (pathObject.type === 'skate_path' && pathObject.style === 'straight') {
+  if (pathObject.style === 'straight') {
     const firstPoint = pathObject.points[0];
     const lastPoint = pathObject.points[pathObject.points.length - 1];
 
@@ -1836,6 +2076,10 @@ function makePathData(pathObject: PathDrillObject) {
 
   if (points.length === 2) {
     return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
+
+  if (pathObject.style === 'freehand') {
+    return makePointLineData(points);
   }
 
   let pathData = `M ${points[0].x} ${points[0].y}`;
@@ -1921,7 +2165,7 @@ function makeBackwardTicks(points: PathPoint[]) {
 
 function simplifyPathPoints(pathObject: PathDrillObject) {
   const points =
-    pathObject.type === 'skate_path' && pathObject.style === 'straight'
+    pathObject.style === 'straight'
       ? getRenderablePathPoints(pathObject)
       : pathObject.points;
 
@@ -1937,6 +2181,62 @@ function simplifyPathPoints(pathObject: PathDrillObject) {
     const previousPoint = points[index - 1];
     return getPointDistance(previousPoint, point) >= MIN_PATH_POINT_DISTANCE;
   });
+}
+
+function duplicateCanvasObject(object: DrillCanvasObject): DrillCanvasObject {
+  const id = `${object.type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  if (isPlacedObject(object)) {
+    return {
+      ...object,
+      id,
+      x: clamp(object.x + 35, 0, RINK_WIDTH),
+      y: clamp(object.y + 35, 0, RINK_HEIGHT),
+    };
+  }
+
+  return {
+    ...object,
+    id,
+    points: object.points.map((point) => ({
+      x: clamp(point.x + 25, 0, RINK_WIDTH),
+      y: clamp(point.y + 25, 0, RINK_HEIGHT),
+    })),
+  };
+}
+
+function rotateCanvasObject(
+  object: DrillCanvasObject,
+  degrees: number,
+): DrillCanvasObject {
+  if (isPlacedObject(object)) {
+    return {
+      ...object,
+      rotation: (object.rotation + degrees) % 360,
+    };
+  }
+
+  const center = object.points.reduce(
+    (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }),
+    { x: 0, y: 0 },
+  );
+  center.x /= object.points.length;
+  center.y /= object.points.length;
+  const radians = (degrees * Math.PI) / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+
+  return {
+    ...object,
+    points: object.points.map((point) => {
+      const x = point.x - center.x;
+      const y = point.y - center.y;
+      return {
+        x: clamp(center.x + x * cosine - y * sine, 0, RINK_WIDTH),
+        y: clamp(center.y + x * sine + y * cosine, 0, RINK_HEIGHT),
+      };
+    }),
+  };
 }
 
 function getMidPoint(firstPoint: PathPoint, secondPoint: PathPoint) {
@@ -1995,6 +2295,17 @@ const styles = StyleSheet.create({
   },
   compactNameCard: {
     padding: spacing.control,
+  },
+  coneGroup: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 1,
+  },
+  contextActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    justifyContent: 'flex-end',
   },
   colorPicker: {
     backgroundColor: colors.card,
@@ -2058,6 +2369,10 @@ const styles = StyleSheet.create({
     color: colors.frostSteel,
     fontSize: fontSizes.base,
     lineHeight: lineHeights.drillDescription,
+  },
+  descriptionInput: {
+    minHeight: sizes.multiline,
+    textAlignVertical: 'top',
   },
   eyebrow: {
     color: colors.hornAmber,
@@ -2191,6 +2506,11 @@ const styles = StyleSheet.create({
     height: sizes.sm,
     width: sizes.sm,
   },
+  puckGroup: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 2,
+  },
   publishCard: {
     alignItems: 'center',
     backgroundColor: colors.card,
@@ -2216,6 +2536,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     padding: spacing.md,
   },
   screen: {

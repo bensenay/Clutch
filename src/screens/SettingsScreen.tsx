@@ -196,7 +196,7 @@ function DirectorAssistantCoachesSettingsLink({
   const { t } = useTranslation();
   const { session } = useAuth();
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['settings-director-link-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -249,7 +249,7 @@ function TeamJoinCodeSection() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['settings-team-code-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -577,7 +577,7 @@ function JoinAnotherTeamSection() {
   const [isJoining, setIsJoining] = useState(false);
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['settings-join-team-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -702,7 +702,7 @@ function JoinAnotherTeamSection() {
 function TeamBrandingSection() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { activeTeam, setActiveTeam } = useActiveTeam();
+  const { activeTeam, isReadOnlyTeam, setActiveTeam } = useActiveTeam();
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR);
   const [secondaryColor, setSecondaryColor] = useState(DEFAULT_SECONDARY_COLOR);
   const [tertiaryColor, setTertiaryColor] = useState(DEFAULT_TERTIARY_COLOR);
@@ -733,7 +733,7 @@ function TeamBrandingSection() {
 
       return data as TeamBranding;
     },
-    enabled: Boolean(activeTeam),
+    enabled: Boolean(activeTeam) && !isReadOnlyTeam,
   });
 
   useEffect(() => {
@@ -887,6 +887,10 @@ function TeamBrandingSection() {
         </Text>
       </View>
     );
+  }
+
+  if (isReadOnlyTeam) {
+    return null;
   }
 
   const teamName = brandingQuery.data?.name ?? activeTeam.name;

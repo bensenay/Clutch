@@ -12,6 +12,8 @@ export type AuthStackParamList = {
 export type AuthenticatedStackParamList = {
   MainTabs: NavigatorScreenParams<AuthenticatedTabParamList> | undefined;
   Settings: undefined;
+  TeamForm: undefined;
+  SuperAdmin: undefined;
   PlayerForm: { playerId?: string; readOnly?: boolean } | undefined;
   GameForm: { gameId?: string; readOnly?: boolean } | undefined;
   LineupBuilder: { gameId: string; readOnly?: boolean };

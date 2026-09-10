@@ -1,23 +1,23 @@
-export const rinkNavy = '#071723';
-export const iceWhite = '#f4f8fb';
-export const frostSteel = '#b8c7d3';
-export const goalRed = '#c33d2e';
-export const slateGrey = '#6f7d89';
-export const hornAmber = '#f2aa2e';
+export const rinkNavy = '#0B1F33';
+export const iceWhite = '#EAF2F7';
+export const frostSteel = '#4A7A9B';
+export const goalRed = '#D8262F';
+export const slateGrey = '#8FA3B3';
+export const hornAmber = '#F2A93B';
 
 export const colors = {
-  border: '#c9d3dc',
+  border: '#C7D6E0',
   card: iceWhite,
-  cardPressed: '#e7eef4',
-  dangerSoft: '#f7ddd9',
-  fieldBackground: '#ffffff',
+  cardPressed: '#DCE8EF',
+  dangerSoft: '#F8DDDF',
+  fieldBackground: '#FFFFFF',
   rinkNavy,
-  rinkSurface: '#0d2230',
-  success: '#2f7d4f',
-  successSoft: '#dfece5',
+  rinkSurface: '#102A43',
+  success: '#247A55',
+  successSoft: '#DCEFE6',
   textOnDark: iceWhite,
   textPrimary: rinkNavy,
-  warningSoft: '#f7ead0',
+  warningSoft: '#FAECD2',
   iceWhite,
   frostSteel,
   goalRed,

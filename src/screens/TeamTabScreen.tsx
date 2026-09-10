@@ -63,7 +63,7 @@ export function TeamTabScreen({ navigation }: Props) {
   } = useActiveTeam();
 
   const profileQuery = useQuery({
-    queryKey: ['profile', session?.user.id],
+    queryKey: ['team-tab-profile', session?.user.id],
     queryFn: async () => {
       if (!session) {
         throw new Error(t('home.noSessionError'));
@@ -210,6 +210,15 @@ export function TeamTabScreen({ navigation }: Props) {
 
   return (
     <AppScreen
+      action={
+        profile?.role === 'director' ? (
+          <AppButton
+            icon="add-circle-outline"
+            title={t('teamForm.addButton')}
+            onPress={() => navigation.navigate('TeamForm')}
+          />
+        ) : undefined
+      }
       description={t('teamTab.description')}
       title={t('teamTab.title')}
     >
@@ -227,6 +236,11 @@ export function TeamTabScreen({ navigation }: Props) {
           <Text style={appScreenStyles.cardDescription}>
             {t('home.superAdminDescription')}
           </Text>
+          <AppButton
+            icon="shield-checkmark-outline"
+            title={t('superAdmin.openButton')}
+            onPress={() => navigation.navigate('SuperAdmin')}
+          />
         </View>
       ) : null}
       {profile?.role === 'coach' && teams.length === 0 && session ? (
@@ -300,6 +314,13 @@ export function TeamTabScreen({ navigation }: Props) {
       assistantCoachTeams.length === 0 ? (
         profile?.role === 'coach' ? null : (
           <EmptyState
+            action={
+              <AppButton
+                icon="add-circle-outline"
+                title={t('teamForm.addFirstButton')}
+                onPress={() => navigation.navigate('TeamForm')}
+              />
+            }
             description={t('teamTab.emptyDescription')}
             icon="shield-outline"
             title={t('teamTab.emptyTitle')}

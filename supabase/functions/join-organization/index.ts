@@ -83,8 +83,15 @@ Deno.serve(async (request) => {
       typeof input.teamName === 'string'
         ? input.teamName.trim()
         : '';
+    const action =
+      typeof input === 'object' &&
+      input !== null &&
+      'action' in input &&
+      input.action === 'list_teams'
+        ? 'list_teams'
+        : 'join';
 
-    if (!joinCode || !teamName) {
+    if (!joinCode || (action === 'join' && !teamName)) {
       return json({ error: 'joinCode and teamName are required.' }, 400);
     }
 
@@ -144,11 +151,26 @@ Deno.serve(async (request) => {
       );
     }
 
+    if (action === 'list_teams') {
+      const { data: teams, error: teamsError } = await admin
+        .from('teams')
+        .select('name')
+        .eq('school_id', school.id)
+        .order('name', { ascending: true });
+
+      if (teamsError) {
+        console.error('Unable to list organization teams:', teamsError);
+        return json({ error: 'Unable to load organization teams.' }, 500);
+      }
+
+      return json({ teams: (teams ?? []).map((team) => team.name) });
+    }
+
     const { data: existingTeam, error: teamLookupError } = await admin
       .from('teams')
       .select('id')
       .eq('school_id', school.id)
-      .eq('name', teamName)
+      .ilike('name', teamName)
       .limit(1)
       .maybeSingle();
 

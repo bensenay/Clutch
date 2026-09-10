@@ -409,6 +409,39 @@ export function LineupBuilderScreen({ route }: Props) {
     );
   }
 
+  function setStarterGoalie(playerId: string) {
+    const player = playerById.get(playerId);
+
+    if (!player) {
+      return;
+    }
+
+    const applyStarter = () =>
+      setGoalies((currentGoalies) =>
+        currentGoalies.map((goalie) => ({
+          ...goalie,
+          is_starter: goalie.player_id === playerId,
+        })),
+      );
+
+    if (player.status !== 'active') {
+      Alert.alert(
+        t('lineup.statusWarningTitle'),
+        t('lineup.statusWarningDescription', {
+          playerName: `${player.first_name} ${player.last_name}`,
+          status: t(`playerForm.statuses.${player.status}`),
+        }),
+        [
+          { style: 'cancel', text: t('common.cancel') },
+          { text: t('lineup.placeAnywayButton'), onPress: applyStarter },
+        ],
+      );
+      return;
+    }
+
+    applyStarter();
+  }
+
   function applySavedLineup(savedLineup: SavedLineupRow) {
     const unavailablePlayers = getUnavailablePlayers(savedLineup, playerById);
 
@@ -517,6 +550,9 @@ export function LineupBuilderScreen({ route }: Props) {
     }
 
     await queryClient.invalidateQueries({ queryKey: ['lineup', gameId] });
+    await queryClient.invalidateQueries({
+      queryKey: ['saved-lineups', activeTeam?.id],
+    });
     setSuccessMessage(t('lineup.saveSuccess'));
     setIsSaving(false);
   }
@@ -664,14 +700,7 @@ export function LineupBuilderScreen({ route }: Props) {
             goalies={goalies}
             isReadOnly={isReadOnly}
             playerById={playerById}
-            onSetStarter={(playerId) =>
-              setGoalies((currentGoalies) =>
-                currentGoalies.map((goalie) => ({
-                  ...goalie,
-                  is_starter: goalie.player_id === playerId,
-                })),
-              )
-            }
+            onSetStarter={setStarterGoalie}
           />
         </>
       ) : null}
@@ -957,6 +986,11 @@ function GoalieSection({
               {player.jersey_number ?? '--'} {player.first_name}{' '}
               {player.last_name}
             </Text>
+            {player.status === 'active' ? null : (
+              <Text style={appScreenStyles.error}>
+                {t(`playerForm.statuses.${player.status}`)}
+              </Text>
+            )}
             <Text style={styles.starterText}>
               {goalie.is_starter
                 ? t('lineup.starterGoalie')

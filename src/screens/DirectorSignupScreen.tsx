@@ -44,12 +44,31 @@ export function DirectorSignupScreen({ navigation }: Props) {
     setIsSubmitting(true);
     beginOnboarding();
 
+    try {
+      await pendingOnboarding.save({
+        type: 'director',
+        email: email.trim().toLocaleLowerCase(),
+        payload: {
+          directorName: name.trim(),
+          organizationName: organizationName.trim(),
+        },
+      });
+    } catch {
+      setError(t('common.pendingOnboardingSaveError'));
+      setIsSubmitting(false);
+      endOnboarding();
+      return;
+    }
+
     let activeSession = session;
 
     if (!activeSession) {
       const { data, error: signupError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          data: { name: name.trim() },
+        },
       });
 
       if (signupError) {
@@ -63,18 +82,6 @@ export function DirectorSignupScreen({ navigation }: Props) {
     }
 
     if (!activeSession) {
-      try {
-        await pendingOnboarding.save({
-          type: 'director',
-          payload: { organizationName: organizationName.trim() },
-        });
-      } catch {
-        setError(t('common.pendingOnboardingSaveError'));
-        setIsSubmitting(false);
-        endOnboarding();
-        return;
-      }
-
       setConfirmationMessage(t('directorSignup.confirmationPendingMessage'));
       setIsSubmitting(false);
       endOnboarding();
@@ -84,7 +91,10 @@ export function DirectorSignupScreen({ navigation }: Props) {
     const { error: functionError } = await supabase.functions.invoke(
       'create-organization',
       {
-        body: { organizationName: organizationName.trim() },
+        body: {
+          directorName: name.trim(),
+          organizationName: organizationName.trim(),
+        },
         headers: {
           Authorization: `Bearer ${activeSession.access_token}`,
         },
@@ -98,6 +108,11 @@ export function DirectorSignupScreen({ navigation }: Props) {
       return;
     }
 
+    try {
+      await pendingOnboarding.clear();
+    } catch (clearError) {
+      console.warn('Unable to clear completed onboarding intent:', clearError);
+    }
     endOnboarding();
   }
 

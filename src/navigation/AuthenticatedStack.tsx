@@ -11,6 +11,8 @@ import { DirectorSettingsScreen } from '../screens/DirectorSettingsScreen';
 import { PlayerFormScreen } from '../screens/PlayerFormScreen';
 import { PracticePlanDetailScreen } from '../screens/PracticePlanDetailScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { TeamFormScreen } from '../screens/TeamFormScreen';
+import { SuperAdminScreen } from '../screens/SuperAdminScreen';
 import { SchoolDrillLibraryScreen } from '../screens/SchoolDrillLibraryScreen';
 import { fonts, iceWhite, rinkNavy } from '../theme/theme';
 import type { AuthenticatedStackParamList } from './types';
@@ -42,6 +44,16 @@ export function AuthenticatedStack() {
         component={SettingsScreen}
         name="Settings"
         options={{ title: t('settings.title') }}
+      />
+      <Stack.Screen
+        component={TeamFormScreen}
+        name="TeamForm"
+        options={{ title: t('teamForm.headerTitle') }}
+      />
+      <Stack.Screen
+        component={SuperAdminScreen}
+        name="SuperAdmin"
+        options={{ title: t('superAdmin.headerTitle') }}
       />
       <Stack.Screen
         component={DirectorAllTeamsScreen}

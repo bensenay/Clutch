@@ -115,7 +115,7 @@ export async function fetchWithCache<T>({
 }
 
 export function makeTeamCacheKey(
-  scope: 'players' | 'games' | 'drills',
+  scope: 'players' | 'games' | 'drills' | 'practice-plans',
   teamId: string,
 ) {
   return `${scope}:team:${teamId}`;

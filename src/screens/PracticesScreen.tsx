@@ -2,6 +2,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
@@ -14,6 +15,8 @@ import type {
   AuthenticatedStackParamList,
   AuthenticatedTabParamList,
 } from '../navigation/types';
+import { fetchWithCache, makeTeamCacheKey } from '../offline/cache';
+import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import { spacing } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
@@ -33,6 +36,7 @@ export type PracticePlan = {
 export function PracticesScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { activeTeam, isReadOnlyTeam } = useActiveTeam();
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
   const practicePlansQuery = useQuery({
     queryKey: ['practice-plans', activeTeam?.id],
     queryFn: async () => {
@@ -40,17 +44,24 @@ export function PracticesScreen({ navigation }: Props) {
         throw new Error(t('practices.noActiveTeamTitle'));
       }
 
-      const { data, error } = await supabase
-        .from('practice_plans')
-        .select('id, team_id, practice_date, segments')
-        .eq('team_id', activeTeam.id)
-        .order('practice_date', { ascending: true });
+      return fetchWithCache<PracticePlan[]>({
+        cacheKey: makeTeamCacheKey('practice-plans', activeTeam.id),
+        fetcher: async () => {
+          const { data, error } = await supabase
+            .from('practice_plans')
+            .select('id, team_id, practice_date, segments')
+            .eq('team_id', activeTeam.id)
+            .order('practice_date', { ascending: true });
 
-      if (error) {
-        throw error;
-      }
+          if (error) {
+            throw error;
+          }
 
-      return (data ?? []) as PracticePlan[];
+          return (data ?? []) as PracticePlan[];
+        },
+        onCacheFallback: setCachedAt,
+        onNetworkSuccess: () => setCachedAt(null),
+      });
     },
     enabled: Boolean(activeTeam),
   });
@@ -86,6 +97,7 @@ export function PracticesScreen({ navigation }: Props) {
       {practicePlansQuery.error ? (
         <Text style={appScreenStyles.error}>{t('practices.loadError')}</Text>
       ) : null}
+      <OfflineNotice cachedAt={cachedAt} />
       <View style={appScreenStyles.card}>
         <View style={appScreenStyles.row}>
           <View style={styles.drillHeaderCopy}>

@@ -5,10 +5,12 @@ const PENDING_ONBOARDING_KEY = 'clutch.pendingOnboarding';
 export type PendingOnboardingIntent =
   {
     type: 'director';
-    payload: { organizationName: string };
+    email: string;
+    payload: { directorName?: string; organizationName: string };
   }
   | {
     type: 'assistant_join_team';
+    email: string;
     payload: { teamJoinCode: string };
   };
 
@@ -19,6 +21,8 @@ function isPendingOnboardingIntent(
     typeof value !== 'object' ||
     value === null ||
     !('type' in value) ||
+    !('email' in value) ||
+    typeof value.email !== 'string' ||
     !('payload' in value) ||
     typeof value.payload !== 'object' ||
     value.payload === null
@@ -28,6 +32,8 @@ function isPendingOnboardingIntent(
 
   if (value.type === 'director') {
     return (
+      (!('directorName' in value.payload) ||
+        typeof value.payload.directorName === 'string') &&
       'organizationName' in value.payload &&
       typeof value.payload.organizationName === 'string'
     );

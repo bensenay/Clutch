@@ -26,8 +26,45 @@ export function CompleteCoachOnboardingScreen({
   const [mode, setMode] = useState<OnboardingMode>(null);
   const [joinCode, setJoinCode] = useState('');
   const [teamName, setTeamName] = useState('');
+  const [teamOptions, setTeamOptions] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+
+  async function loadOrganizationTeams() {
+    if (!joinCode.trim()) {
+      setError(t('completeCoachOnboarding.codeRequiredError'));
+      return;
+    }
+
+    if (!session) {
+      setError(t('home.noSessionError'));
+      return;
+    }
+
+    setError('');
+    setIsLoadingTeams(true);
+    const { data, error: functionError } = await supabase.functions.invoke<{
+      teams: string[];
+    }>('join-organization', {
+      body: { action: 'list_teams', joinCode: joinCode.trim() },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (functionError) {
+      const message = await getFunctionErrorMessage(functionError);
+      setError(
+        message === 'Invalid organization join code.'
+          ? t('completeCoachOnboarding.invalidCodeError')
+          : message ?? t('completeCoachOnboarding.teamsLoadError'),
+      );
+      setIsLoadingTeams(false);
+      return;
+    }
+
+    setTeamOptions(data?.teams ?? []);
+    setIsLoadingTeams(false);
+  }
 
   async function handleJoinOrganization() {
     if (!joinCode.trim() || !teamName.trim()) {
@@ -115,6 +152,7 @@ export function CompleteCoachOnboardingScreen({
     setError('');
     setJoinCode('');
     setTeamName('');
+    setTeamOptions([]);
   }
 
   return (
@@ -147,10 +185,42 @@ export function CompleteCoachOnboardingScreen({
           <FormField
             autoCapitalize="characters"
             label={t('completeCoachOnboarding.joinCodeLabel')}
-            onChangeText={setJoinCode}
+            onChangeText={(value) => {
+              setJoinCode(value);
+              setTeamOptions([]);
+            }}
             placeholder={t('completeCoachOnboarding.joinCodePlaceholder')}
             value={joinCode}
           />
+          <Button
+            color={goalRed}
+            disabled={isLoadingTeams || isSubmitting}
+            title={
+              isLoadingTeams
+                ? t('common.loading')
+                : t('completeCoachOnboarding.findTeamsButton')
+            }
+            onPress={() => void loadOrganizationTeams()}
+          />
+          {teamOptions.length > 0 ? (
+            <View style={appScreenStyles.list}>
+              <Text style={appScreenStyles.cardDescription}>
+                {t('completeCoachOnboarding.existingTeamsLabel')}
+              </Text>
+              {teamOptions.map((option) => (
+                <ChoiceButton
+                  description={
+                    option === teamName
+                      ? t('completeCoachOnboarding.selectedTeamDescription')
+                      : t('completeCoachOnboarding.existingTeamDescription')
+                  }
+                  key={option}
+                  title={option}
+                  onPress={() => setTeamName(option)}
+                />
+              ))}
+            </View>
+          ) : null}
           <FormField
             autoCapitalize="words"
             label={t('completeCoachOnboarding.teamNameLabel')}

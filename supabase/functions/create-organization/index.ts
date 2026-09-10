@@ -83,6 +83,13 @@ Deno.serve(async (request) => {
       typeof input.organizationName === 'string'
         ? input.organizationName.trim()
         : '';
+    const directorName =
+      typeof input === 'object' &&
+      input !== null &&
+      'directorName' in input &&
+      typeof input.directorName === 'string'
+        ? input.directorName.trim()
+        : '';
 
     if (!organizationName) {
       return json({ error: 'organizationName is required.' }, 400);
@@ -153,6 +160,7 @@ Deno.serve(async (request) => {
     const { data: updatedProfile, error: updateError } = await admin
       .from('profiles')
       .update({
+        ...(directorName ? { name: directorName } : {}),
         role: 'director',
         school_id: school.id,
       })
