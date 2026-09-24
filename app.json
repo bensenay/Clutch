@@ -31,7 +31,8 @@
           "photosPermission": "Allow Clutch to access your photos so you can upload a team logo."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-sharing"
     ]
   }
 }

@@ -88,7 +88,7 @@ type CoachAssignment = {
 const DEFAULT_ASSIGNMENT_TYPE: AssignmentType = 'practice';
 const DEFAULT_MEMBERSHIP_ROLE: MembershipRole = 'assistant_coach';
 
-export function DirectorAssistantCoachesScreen(_props: Props) {
+export function DirectorAssistantCoachesScreen({ navigation }: Props) {
   const { i18n, t } = useTranslation();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -97,6 +97,8 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
   );
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteTeamIds, setInviteTeamIds] = useState<string[]>([]);
+  const [inviteMembershipRole, setInviteMembershipRole] =
+    useState<MembershipRole>('assistant_coach');
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [isInviting, setIsInviting] = useState(false);
@@ -382,6 +384,21 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
 
     const additionalTeamIds = inviteTeamIds.slice(1);
 
+    if (data?.userId && inviteMembershipRole === 'head_coach') {
+      const { error: initialRoleError } = await supabase
+        .from('team_memberships')
+        .update({ membership_role: 'head_coach' })
+        .eq('user_id', data.userId)
+        .eq('team_id', inviteTeamIds[0]);
+
+      if (initialRoleError) {
+        console.error('Unable to set invited coach role:', initialRoleError);
+        setInviteError(t('directorAssistantCoaches.inviteAdditionalTeamsError'));
+        setIsInviting(false);
+        return;
+      }
+    }
+
     if (data?.userId && additionalTeamIds.length > 0) {
       const { error: membershipError } = await supabase
         .from('team_memberships')
@@ -389,7 +406,7 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
           additionalTeamIds.map((teamId) => ({
             user_id: data.userId,
             team_id: teamId,
-            membership_role: 'assistant_coach' as const,
+            membership_role: inviteMembershipRole,
           })),
         );
 
@@ -406,8 +423,8 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
 
     setInviteEmail('');
     setInviteTeamIds([]);
+    setInviteMembershipRole('assistant_coach');
     setInviteMessage(t('directorAssistantCoaches.inviteSuccess'));
-    setSelectedAssistantId(data?.userId ?? selectedAssistantId);
     await queryClient.invalidateQueries({
       queryKey: ['assistant-coaches', profile?.school_id],
     });
@@ -432,7 +449,7 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
     const { data: existingMemberships, error: existingMembershipsError } =
       await supabase
         .from('team_memberships')
-        .select('team_id')
+        .select('id, team_id, membership_role')
         .eq('user_id', selectedCoachForMembershipId)
         .in('team_id', selectedMembershipTeamIds);
 
@@ -446,48 +463,58 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
       return;
     }
 
-    const existingTeamIds = new Set(
-      (existingMemberships ?? []).map((membership) => membership.team_id),
+    const existingByTeam = new Map(
+      (existingMemberships ?? []).map((membership) => [membership.team_id, membership]),
     );
     const newTeamIds = selectedMembershipTeamIds.filter(
-      (teamId) => !existingTeamIds.has(teamId),
+      (teamId) => !existingByTeam.has(teamId),
     );
-
-    if (newTeamIds.length === 0) {
-      setMembershipError(
-        t('directorAssistantCoaches.addDuplicateMembershipError'),
+    const changedMemberships = selectedMembershipTeamIds
+      .map((teamId) => existingByTeam.get(teamId))
+      .filter(
+        (membership) =>
+          membership && membership.membership_role !== selectedMembershipRole,
       );
-      setIsAddingMembership(false);
-      return;
-    }
 
-    const { error } = await supabase.from('team_memberships').insert(
-      newTeamIds.map((teamId) => ({
-        user_id: selectedCoachForMembershipId,
-        team_id: teamId,
-        membership_role: selectedMembershipRole,
-      })),
-    );
+    if (newTeamIds.length > 0) {
+      const { error } = await supabase.from('team_memberships').insert(
+        newTeamIds.map((teamId) => ({
+          user_id: selectedCoachForMembershipId,
+          team_id: teamId,
+          membership_role: selectedMembershipRole,
+        })),
+      );
 
-    if (error) {
-      if (error.code === '23505') {
-        setMembershipError(
-          t('directorAssistantCoaches.addDuplicateMembershipError'),
-        );
-      } else {
+      if (error) {
         console.error('Unable to add coach team membership:', error);
         setMembershipError(t('directorAssistantCoaches.addMembershipError'));
+        setIsAddingMembership(false);
+        return;
       }
+    }
 
+    for (const membership of changedMemberships) {
+      if (!membership) continue;
+      const { error } = await supabase
+        .from('team_memberships')
+        .update({ membership_role: selectedMembershipRole })
+        .eq('id', membership.id);
+
+      if (error) {
+        console.error('Unable to change coach membership role:', error);
+        setMembershipError(t('directorAssistantCoaches.addMembershipError'));
+        setIsAddingMembership(false);
+        return;
+      }
+    }
+
+    if (newTeamIds.length === 0 && changedMemberships.length === 0) {
+      setMembershipError(t('directorAssistantCoaches.addDuplicateMembershipError'));
       setIsAddingMembership(false);
       return;
     }
 
     setMembershipMessage(t('directorAssistantCoaches.addMembershipSuccess'));
-
-    if (selectedMembershipRole === 'assistant_coach') {
-      setSelectedAssistantId(selectedCoachForMembershipId);
-    }
 
     setSelectedCoachForMembershipId('');
     setSelectedMembershipTeamIds([]);
@@ -761,6 +788,27 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
             );
           })}
         </View>
+        <Text style={styles.sectionLabel}>
+          {t('directorAssistantCoaches.addRoleLabel')}
+        </Text>
+        <View style={styles.segmentedControl}>
+          {(['head_coach', 'assistant_coach'] as MembershipRole[]).map((membershipRole) => {
+            const isSelected = membershipRole === inviteMembershipRole;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                key={membershipRole}
+                onPress={() => setInviteMembershipRole(membershipRole)}
+                style={[styles.segmentButton, isSelected && styles.selectedChoice]}
+              >
+                <Text style={[styles.choiceText, isSelected && styles.selectedChoiceText]}>
+                  {t(`directorAssistantCoaches.membershipRoles.${membershipRole}`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         {inviteError ? (
           <Text style={authStyles.error}>{inviteError}</Text>
         ) : null}
@@ -937,6 +985,14 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
               onPress={() => confirmRemoveCoach(selectedOrganizationCoach, null)}
               variant="danger"
             />
+            <AppButton
+              icon="calendar-outline"
+              title={t('directorAssistantCoaches.createScheduleAssignmentButton')}
+              onPress={() => navigation.navigate('ScheduleEventForm', {
+                coachId: selectedOrganizationCoach.id,
+              })}
+              variant="secondary"
+            />
           </View>
         ) : null}
 
@@ -963,90 +1019,6 @@ export function DirectorAssistantCoachesScreen(_props: Props) {
         />
       </View>
 
-      <View style={appScreenStyles.card}>
-        <Text style={appScreenStyles.cardTitle}>
-          {t('directorAssistantCoaches.listTitle')}
-        </Text>
-        <Text style={appScreenStyles.cardDescription}>
-          {t('directorAssistantCoaches.listDescription')}
-        </Text>
-        {assistantsQuery.isLoading ? (
-          <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
-        ) : null}
-        {assistantsQuery.error ? (
-          <Text style={appScreenStyles.error}>
-            {t('directorAssistantCoaches.loadError')}
-          </Text>
-        ) : null}
-        {!assistantsQuery.isLoading && assistantsQuery.data?.length === 0 ? (
-          <Text style={appScreenStyles.note}>
-            {t('directorAssistantCoaches.emptyAssistants')}
-          </Text>
-        ) : null}
-        <View style={styles.assistantList}>
-          {(assistantsQuery.data ?? []).map((assistant) => {
-            const isSelected = assistant.id === selectedAssistantId;
-
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
-                key={assistant.id}
-                onPress={() => setSelectedAssistantId(assistant.id)}
-                style={[
-                  styles.assistantButton,
-                  isSelected && styles.selectedAssistantButton,
-                ]}
-              >
-                <Text style={styles.assistantName}>
-                  {formatCoachName(assistant)}
-                </Text>
-                <Text style={styles.assistantEmail}>{assistant.email}</Text>
-                <Text style={styles.assistantEmail}>
-                  {t('directorAssistantCoaches.assistantTeams', {
-                    teams: formatAssistantTeams(assistant, t),
-                  })}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      {selectedAssistant ? (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('directorAssistantCoaches.assignmentTitle', {
-              coachName: formatCoachName(selectedAssistant),
-            })}
-          </Text>
-          <AssignmentForm
-            assignmentError={assignmentError}
-            assignmentMessage={assignmentMessage}
-            assignmentType={assignmentType}
-            directorNote={directorNote}
-            isLoadingTeams={teamsQuery.isLoading}
-            isSaving={isSavingAssignment}
-            scheduledDate={scheduledDate}
-            scheduledTime={scheduledTime}
-            selectedTeamId={selectedTeamId}
-            teams={teamsQuery.data ?? []}
-            onAssignmentTypeChange={setAssignmentType}
-            onDirectorNoteChange={setDirectorNote}
-            onSave={() => void saveAssignment()}
-            onScheduledDateChange={setScheduledDate}
-            onScheduledTimeChange={setScheduledTime}
-            onSelectedTeamIdChange={setSelectedTeamId}
-          />
-          <AssignmentList
-            assignments={assignmentsQuery.data ?? []}
-            isLoading={assignmentsQuery.isLoading}
-            loadError={Boolean(assignmentsQuery.error)}
-            locale={i18n.language}
-            teams={teamsQuery.data ?? []}
-          />
-        </View>
-      ) : null}
     </AppScreen>
   );
 }

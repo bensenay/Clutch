@@ -138,7 +138,7 @@ function isTeamJoinCodeSchemaError(error: unknown) {
   );
 }
 
-export function SettingsScreen({ navigation }: Props) {
+export function SettingsScreen(_props: Props) {
   const { i18n, t } = useTranslation();
   const { signOut } = useAuth();
   const { setActiveTeam } = useActiveTeam();
@@ -159,7 +159,6 @@ export function SettingsScreen({ navigation }: Props) {
       title={t('settings.title')}
     >
       <DirectorOrganizationSettingsSection />
-      <DirectorAssistantCoachesSettingsLink navigation={navigation} />
       <TeamJoinCodeSection />
       <JoinAnotherTeamSection />
       <TeamBrandingSection />
@@ -185,56 +184,6 @@ export function SettingsScreen({ navigation }: Props) {
         onPress={() => void handleSignOut()}
       />
     </AppScreen>
-  );
-}
-
-function DirectorAssistantCoachesSettingsLink({
-  navigation,
-}: {
-  navigation: Props['navigation'];
-}) {
-  const { t } = useTranslation();
-  const { session } = useAuth();
-  const profileQuery = useQuery({
-    queryKey: ['settings-director-link-profile', session?.user.id],
-    queryFn: async () => {
-      if (!session) {
-        throw new Error(t('home.noSessionError'));
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return data as { role: 'super_admin' | 'director' | 'coach' };
-    },
-    enabled: Boolean(session),
-  });
-
-  if (profileQuery.data?.role !== 'director') {
-    return null;
-  }
-
-  return (
-    <View style={appScreenStyles.card}>
-      <Text style={appScreenStyles.cardTitle}>
-        {t('settings.assistantCoachesTitle')}
-      </Text>
-      <Text style={appScreenStyles.cardDescription}>
-        {t('settings.assistantCoachesDescription')}
-      </Text>
-      <AppButton
-        icon="people-outline"
-        title={t('settings.assistantCoachesButton')}
-        onPress={() => navigation.navigate('DirectorAssistantCoaches')}
-      />
-    </View>
   );
 }
 

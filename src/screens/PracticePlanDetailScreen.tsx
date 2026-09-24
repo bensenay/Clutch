@@ -80,10 +80,13 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient();
   const { activeTeam, isReadOnlyTeam } = useActiveTeam();
   const practicePlanId = route.params?.practicePlanId;
+  const scheduleEventId = route.params?.scheduleEventId;
   const isEditing = Boolean(practicePlanId);
   const isReadOnly = isReadOnlyTeam || Boolean(route.params?.readOnly);
   const [practiceDate, setPracticeDate] = useState(() =>
-    makeDefaultPracticeDate(new Date()),
+    makeDefaultPracticeDate(
+      route.params?.scheduledAt ? new Date(route.params.scheduledAt) : new Date(),
+    ),
   );
   const [calendarMonth, setCalendarMonth] = useState(() =>
     startOfMonth(new Date()),
@@ -391,13 +394,28 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     setIsSaving(false);
 
     if (!isEditing && saveResult.data?.id) {
+      if (scheduleEventId) {
+        const { error: linkError } = await supabase
+          .from('schedule_events')
+          .update({ practice_plan_id: saveResult.data.id })
+          .eq('id', scheduleEventId);
+
+        if (linkError) {
+          console.error('Unable to link practice plan to schedule event:', linkError);
+          setError(t('practiceDetail.saveError'));
+          return;
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ['schedule-events'] });
+        await queryClient.invalidateQueries({ queryKey: ['schedule-event', scheduleEventId] });
+      }
       navigation.replace('PracticePlanDetail', {
         practicePlanId: saveResult.data.id,
       });
       return;
     }
 
-    navigation.replace('MainTabs', { screen: 'PracticesTab' });
+    navigation.replace('MainTabs', { screen: 'PracticeTab' });
   }
 
   async function deletePracticePlan() {
@@ -429,7 +447,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
       queryKey: ['calendar-practice-plans'],
     });
     setIsSaving(false);
-    navigation.replace('MainTabs', { screen: 'PracticesTab' });
+    navigation.replace('MainTabs', { screen: 'PracticeTab' });
   }
 
   function confirmDeletePracticePlan() {

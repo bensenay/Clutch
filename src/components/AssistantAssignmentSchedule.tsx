@@ -23,7 +23,7 @@ import { EmptyState } from './EmptyState';
 import { LoadingState } from './LoadingState';
 
 type Navigation = CompositeNavigationProp<
-  BottomTabNavigationProp<AuthenticatedTabParamList, 'TeamTab'>,
+  BottomTabNavigationProp<AuthenticatedTabParamList, 'ScheduleTab'>,
   NativeStackNavigationProp<AuthenticatedStackParamList>
 >;
 

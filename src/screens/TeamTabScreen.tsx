@@ -1,644 +1,211 @@
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../auth/AuthProvider';
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import { AppButton } from '../components/AppButton';
-import { AssistantAssignmentSchedule } from '../components/AssistantAssignmentSchedule';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingState } from '../components/LoadingState';
-import type {
-  AuthenticatedStackParamList,
-  AuthenticatedTabParamList,
-} from '../navigation/types';
-import {
-  type ActiveTeam,
-  useActiveTeam,
-} from '../teams/ActiveTeamContext';
-import { colors, fonts, goalRed, slateGrey, spacing } from '../theme/theme';
-import { formatGameDate } from './GameListScreen';
+import type { AuthenticatedStackParamList } from '../navigation/types';
+import { addDays, endOfDay, formatTime, startOfDay } from '../schedule/dates';
+import type { EventStaffAssignment, ScheduleEvent } from '../schedule/types';
+import { useActiveTeam, type ActiveTeam } from '../teams/ActiveTeamContext';
+import { colors, radii, spacing } from '../theme/theme';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<AuthenticatedTabParamList, 'TeamTab'>,
-  NativeStackScreenProps<AuthenticatedStackParamList>
->;
+type Props = NativeStackScreenProps<AuthenticatedStackParamList, 'Dashboard'>;
 
-type Profile = {
+type DashboardPlayer = {
   id: string;
-  email: string;
-  name: string | null;
-  role: 'super_admin' | 'director' | 'coach';
-  school_id: string | null;
-};
-
-type MembershipRow = {
   team_id: string;
-  membership_role: 'head_coach' | 'assistant_coach';
-  teams: ActiveTeam | ActiveTeam[] | null;
+  first_name: string;
+  last_name: string;
+  status: 'active' | 'injured' | 'suspended';
+  status_note: string | null;
 };
-
-type TeamGameSummary = {
-  id: string;
-  opponent_name: string;
-  game_date: string;
-  is_home: boolean;
-  result: 'win' | 'loss' | 'tie' | null;
-};
-
-const EMPTY_TEAMS: ActiveTeam[] = [];
 
 export function TeamTabScreen({ navigation }: Props) {
-  const { t } = useTranslation();
-  const { session } = useAuth();
-  const {
-    activeTeam,
-    activeTeamAccess,
-    setActiveTeam,
-  } = useActiveTeam();
-
-  const profileQuery = useQuery({
-    queryKey: ['team-tab-profile', session?.user.id],
+  const { i18n, t } = useTranslation();
+  const { activeTeam, isLoadingTeams, role, setActiveTeam, teams, teamsError } = useActiveTeam();
+  const dashboardTeams = role === 'director' ? teams : activeTeam ? [activeTeam] : [];
+  const teamIds = dashboardTeams.map((team) => team.id);
+  const key = teamIds.join(',');
+  const playersQuery = useQuery({
+    queryKey: ['dashboard', 'players', key],
     queryFn: async () => {
-      if (!session) {
-        throw new Error(t('home.noSessionError'));
-      }
-
+      if (teamIds.length === 0) return [] as DashboardPlayer[];
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, name, role, school_id')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return data as Profile;
+        .from('players')
+        .select('id, team_id, first_name, last_name, status, status_note')
+        .in('team_id', teamIds)
+        .order('last_name');
+      if (error) throw error;
+      return (data ?? []) as DashboardPlayer[];
     },
-    enabled: Boolean(session),
+    enabled: teamIds.length > 0,
   });
-
-  const profile = profileQuery.data;
-  const directorTeamsQuery = useQuery({
-    queryKey: ['director-teams', profile?.school_id],
+  const rangeStart = startOfDay(new Date());
+  const rangeEnd = endOfDay(addDays(rangeStart, 7));
+  const eventsQuery = useQuery({
+    queryKey: ['dashboard', 'events', key, rangeStart.toISOString()],
     queryFn: async () => {
-      if (!profile?.school_id) {
-        throw new Error(t('directorAllTeams.noSchoolError'));
-      }
-
+      if (teamIds.length === 0) return [] as ScheduleEvent[];
       const { data, error } = await supabase
-        .from('teams')
-        .select(
-          'id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url',
-        )
-        .eq('school_id', profile.school_id)
-        .order('name', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      return (data ?? []) as ActiveTeam[];
+        .from('schedule_events')
+        .select('*')
+        .in('team_id', teamIds)
+        .gte('starts_at', rangeStart.toISOString())
+        .lt('starts_at', rangeEnd.toISOString())
+        .order('starts_at');
+      if (error) throw error;
+      return (data ?? []) as ScheduleEvent[];
     },
-    enabled: profile?.role === 'director' && Boolean(profile.school_id),
+    enabled: teamIds.length > 0,
   });
-
-  const coachTeamsQuery = useQuery({
-    queryKey: ['coach-teams', session?.user.id],
+  const eventIds = (eventsQuery.data ?? []).map((event) => event.id);
+  const staffQuery = useQuery({
+    queryKey: ['dashboard', 'staff', eventIds.join(',')],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_memberships')
-        .select(
-          'team_id, membership_role, teams ( id, name, level, season, primary_color, secondary_color, tertiary_color, logo_url )',
-        )
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      const membershipRows = (data ?? []) as MembershipRow[];
-      const membershipTeamsForCoach: ActiveTeam[] = [];
-
-      for (const row of membershipRows) {
-        const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
-
-        if (team) {
-          membershipTeamsForCoach.push({
-            ...team,
-            membership_role: row.membership_role,
-          });
-        }
-      }
-
-      return membershipTeamsForCoach;
+      if (eventIds.length === 0) return [] as EventStaffAssignment[];
+      const { data, error } = await supabase.rpc('get_schedule_event_staff', { check_event_ids: eventIds });
+      if (error) throw error;
+      return (data ?? []) as EventStaffAssignment[];
     },
-    enabled: profile?.role === 'coach',
+    enabled: eventIds.length > 0,
   });
+  const players = playersQuery.data ?? [];
+  const events = eventsQuery.data ?? [];
+  const staffByEvent = useMemo(() => {
+    const map = new Map<string, EventStaffAssignment[]>();
+    for (const row of staffQuery.data ?? []) map.set(row.event_id, [...(map.get(row.event_id) ?? []), row]);
+    return map;
+  }, [staffQuery.data]);
 
-  const membershipTeams = coachTeamsQuery.data ?? EMPTY_TEAMS;
-  const headCoachTeams = useMemo(
-    () =>
-      membershipTeams.filter(
-        (team) => team.membership_role !== 'assistant_coach',
-      ),
-    [membershipTeams],
-  );
-  const assistantCoachTeams = useMemo(
-    () =>
-      membershipTeams.filter(
-        (team) => team.membership_role === 'assistant_coach',
-      ),
-    [membershipTeams],
-  );
-  const teams =
-    profile?.role === 'director'
-      ? directorTeamsQuery.data ?? EMPTY_TEAMS
-      : headCoachTeams;
-  const activeMembershipTeams =
-    profile?.role === 'coach' ? membershipTeams : teams;
-  const isLoading =
-    profileQuery.isLoading ||
-    directorTeamsQuery.isLoading ||
-    coachTeamsQuery.isLoading;
-  const hasError =
-    Boolean(profileQuery.error) ||
-    Boolean(directorTeamsQuery.error) ||
-    Boolean(coachTeamsQuery.error);
-  const shouldShowDashboard =
-    Boolean(activeTeam) &&
-    (profile?.role === 'director' ||
-      activeTeamAccess.mode === 'assignment' ||
-      activeTeam?.membership_role !== 'assistant_coach');
+  function openEvent(event: ScheduleEvent) {
+    const team = teams.find((candidate) => candidate.id === event.team_id);
+    if (role !== 'director' && team) setActiveTeam(team);
+    navigation.navigate('MainTabs', { screen: 'ScheduleTab', params: { eventId: event.id } });
+  }
 
-  useEffect(() => {
-    if (
-      profile?.role === 'coach' &&
-      teams.length === 1 &&
-      activeTeamAccess.mode === 'membership' &&
-      activeTeam?.id !== teams[0].id
-    ) {
-      setActiveTeam(teams[0]);
-    }
-  }, [
-    activeTeam?.id,
-    activeTeamAccess.mode,
-    profile?.role,
-    setActiveTeam,
-    teams,
-  ]);
+  function openPlayer(player: DashboardPlayer) {
+    const team = teams.find((candidate) => candidate.id === player.team_id);
+    if (team) setActiveTeam(team);
+    navigation.navigate('PlayerForm', { playerId: player.id, readOnly: team?.membership_role === 'assistant_coach' });
+  }
 
-  useEffect(() => {
-    if (activeTeamAccess.mode === 'assignment') {
-      return;
-    }
-
-    if (!activeTeam || activeMembershipTeams.length === 0) {
-      return;
-    }
-
-    if (!activeMembershipTeams.some((team) => team.id === activeTeam.id)) {
-      setActiveTeam(null);
-    }
-  }, [activeMembershipTeams, activeTeam, activeTeamAccess.mode, setActiveTeam]);
+  const isLoading = isLoadingTeams || playersQuery.isLoading || eventsQuery.isLoading || staffQuery.isLoading;
+  const hasError = teamsError || Boolean(playersQuery.error || eventsQuery.error || staffQuery.error);
 
   return (
     <AppScreen
-      action={
-        profile?.role === 'director' ? (
-          <AppButton
-            icon="add-circle-outline"
-            title={t('teamForm.addButton')}
-            onPress={() => navigation.navigate('TeamForm')}
-          />
-        ) : undefined
-      }
-      description={t('teamTab.description')}
-      title={t('teamTab.title')}
+      action={role === 'director' ? <AppButton icon="add-circle-outline" title={t('teamForm.addButton')} onPress={() => navigation.navigate('TeamForm')} /> : undefined}
+      description={role === 'director' ? t('dashboard.directorDescription') : t('dashboard.coachDescription', { teamName: activeTeam?.name ?? '' })}
+      title={t('dashboard.title')}
     >
-      {isLoading ? (
-        <LoadingState />
-      ) : null}
-      {hasError ? (
-        <Text style={appScreenStyles.error}>{t('teamTab.loadError')}</Text>
-      ) : null}
-      {profile?.role === 'super_admin' ? (
+      {isLoading ? <LoadingState /> : null}
+      {hasError ? <Text style={appScreenStyles.error}>{t('dashboard.loadError')}</Text> : null}
+      {role === 'super_admin' ? (
         <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('home.superAdminTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('home.superAdminDescription')}
-          </Text>
-          <AppButton
-            icon="shield-checkmark-outline"
-            title={t('superAdmin.openButton')}
-            onPress={() => navigation.navigate('SuperAdmin')}
-          />
+          <Text style={appScreenStyles.cardTitle}>{t('home.superAdminTitle')}</Text>
+          <Text style={appScreenStyles.cardDescription}>{t('home.superAdminDescription')}</Text>
+          <AppButton icon="shield-checkmark-outline" title={t('superAdmin.openButton')} onPress={() => navigation.navigate('SuperAdmin')} />
         </View>
       ) : null}
-      {profile?.role === 'coach' && teams.length === 0 && session ? (
-        <AssistantAssignmentSchedule
-          navigation={navigation}
-          userId={session.user.id}
+      {!isLoading && role !== 'super_admin' && dashboardTeams.length === 0 ? <EmptyState icon="shield-outline" title={t('dashboard.noTeamTitle')} description={t('dashboard.noTeamDescription')} /> : null}
+      {dashboardTeams.map((team) => (
+        <TeamSummary
+          events={events.filter((event) => event.team_id === team.id)}
+          key={team.id}
+          locale={i18n.language}
+          players={players.filter((player) => player.team_id === team.id)}
+          staffByEvent={staffByEvent}
+          team={team}
+          onOpenEvent={openEvent}
+          onOpenPlayer={openPlayer}
         />
-      ) : null}
-      {activeTeam && shouldShowDashboard ? (
-        <TeamDashboard
-          team={activeTeam}
-          onOpenGame={(gameId) =>
-            navigation.navigate('GameForm', {
-              gameId,
-              readOnly: activeTeamAccess.mode === 'assignment',
-            })
-          }
-        />
-      ) : null}
-      {(profile?.role === 'director' ||
-        (profile?.role === 'coach' && teams.length > 1)) &&
-      !isLoading ? (
-        <View style={appScreenStyles.card}>
-          <Text style={appScreenStyles.cardTitle}>
-            {t('teamTab.teamListTitle')}
-          </Text>
-          <Text style={appScreenStyles.cardDescription}>
-            {t('teamTab.teamListDescription')}
-          </Text>
-          <View style={styles.list}>
-            {teams.map((team) => (
-              <AnimatedPressable
-                accessibilityRole="button"
-                key={team.id}
-                onPress={() => setActiveTeam(team)}
-                style={[
-                  styles.teamRow,
-                  activeTeam?.id === team.id && styles.activeTeamRow,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.teamName,
-                    activeTeam?.id === team.id && styles.activeTeamName,
-                  ]}
-                >
-                  {team.name}
-                </Text>
-              </AnimatedPressable>
-            ))}
-          </View>
-        </View>
-      ) : null}
-      {profile?.role === 'coach' && assistantCoachTeams.length > 0 ? (
-        <AssistantTeamRosterAccess
-          activeTeamId={activeTeam?.id ?? null}
-          navigation={navigation}
-          teams={assistantCoachTeams}
-          onSelectTeam={setActiveTeam}
-        />
-      ) : null}
-      {profile?.role === 'coach' && teams.length > 0 && session ? (
-        <AssistantAssignmentSchedule
-          navigation={navigation}
-          userId={session.user.id}
-        />
-      ) : null}
-      {!isLoading &&
-      profile?.role !== 'super_admin' &&
-      teams.length === 0 &&
-      assistantCoachTeams.length === 0 ? (
-        profile?.role === 'coach' ? null : (
-          <EmptyState
-            action={
-              <AppButton
-                icon="add-circle-outline"
-                title={t('teamForm.addFirstButton')}
-                onPress={() => navigation.navigate('TeamForm')}
-              />
-            }
-            description={t('teamTab.emptyDescription')}
-            icon="shield-outline"
-            title={t('teamTab.emptyTitle')}
-          />
-        )
-      ) : null}
+      ))}
     </AppScreen>
   );
 }
 
-function TeamDashboard({
-  team,
-  onOpenGame,
-}: {
+function TeamSummary({ team, players, events, staffByEvent, locale, onOpenEvent, onOpenPlayer }: {
   team: ActiveTeam;
-  onOpenGame: (gameId: string) => void;
+  players: DashboardPlayer[];
+  events: ScheduleEvent[];
+  staffByEvent: Map<string, EventStaffAssignment[]>;
+  locale: string;
+  onOpenEvent: (event: ScheduleEvent) => void;
+  onOpenPlayer: (player: DashboardPlayer) => void;
 }) {
   const { t } = useTranslation();
-  const playersCountQuery = useQuery({
-    queryKey: ['team-dashboard-player-count', team.id],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('players')
-        .select('id', { count: 'exact', head: true })
-        .eq('team_id', team.id);
-
-      if (error) {
-        throw error;
-      }
-
-      return count ?? 0;
-    },
+  const todayStart = startOfDay(new Date());
+  const todayEnd = endOfDay(new Date());
+  const todayEvents = events.filter((event) => {
+    const time = new Date(event.starts_at).getTime();
+    return time >= todayStart.getTime() && time < todayEnd.getTime();
   });
-  const gamesQuery = useQuery({
-    queryKey: ['team-dashboard-games', team.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('games')
-        .select('id, opponent_name, game_date, is_home, result')
-        .eq('team_id', team.id)
-        .order('game_date', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      return (data ?? []) as TeamGameSummary[];
-    },
-  });
-  const games = gamesQuery.data ?? [];
-  const record = games.reduce(
-    (summary, game) => {
-      if (game.result === 'win') {
-        summary.wins += 1;
-      } else if (game.result === 'loss') {
-        summary.losses += 1;
-      } else if (game.result === 'tie') {
-        summary.ties += 1;
-      }
-
-      return summary;
-    },
-    { wins: 0, losses: 0, ties: 0 },
-  );
-  const now = Date.now();
-  const nextGame = games.find(
-    (game) => new Date(game.game_date).getTime() >= now,
-  );
-  const initials = getTeamInitials(team.name);
+  const weekGames = events.filter((event) => event.event_type === 'game');
+  const unavailable = players.filter((player) => player.status !== 'active');
 
   return (
     <View style={appScreenStyles.card}>
-      <View style={styles.dashboardHeader}>
-        <View style={styles.logoFrame}>
-          {team.logo_url ? (
-            <Image
-              source={{ uri: team.logo_url }}
-              style={styles.logoImage}
-            />
-          ) : (
-            <Text style={styles.logoPlaceholder}>{initials}</Text>
-          )}
+      <View style={appScreenStyles.row}>
+        <View style={styles.teamCopy}>
+          <Text style={styles.teamName}>{team.name}</Text>
+          <Text style={appScreenStyles.meta}>{[team.level, team.season].filter(Boolean).join(' / ')}</Text>
         </View>
-        <View style={styles.dashboardTitleBlock}>
-          <Text style={appScreenStyles.cardTitle}>{team.name}</Text>
+        <View style={styles.countBadge}><Text style={styles.countText}>{t('dashboard.rosterCount', { count: players.length })}</Text></View>
+      </View>
+      <Text style={styles.sectionTitle}>{t('dashboard.todayTitle')}</Text>
+      {todayEvents.length === 0 ? <Text style={appScreenStyles.note}>{t('dashboard.noEventsToday')}</Text> : todayEvents.map((event) => <DashboardEvent key={event.id} event={event} locale={locale} staff={staffByEvent.get(event.id) ?? []} onPress={() => onOpenEvent(event)} />)}
+      {weekGames.length > 0 ? <><Text style={styles.sectionTitle}>{t('dashboard.gamesThisWeek')}</Text>{weekGames.map((event) => <DashboardEvent key={event.id} event={event} locale={locale} staff={staffByEvent.get(event.id) ?? []} onPress={() => onOpenEvent(event)} />)}</> : null}
+      <Text style={styles.sectionTitle}>{t('dashboard.unavailableTitle')}</Text>
+      {unavailable.length === 0 ? <Text style={appScreenStyles.note}>{t('dashboard.everyoneAvailable')}</Text> : unavailable.map((player) => (
+        <AnimatedPressable accessibilityRole="button" key={player.id} onPress={() => onOpenPlayer(player)} style={styles.playerRow}>
+          <View style={styles.teamCopy}>
+            <Text style={styles.playerName}>{player.first_name} {player.last_name}</Text>
+            <Text style={appScreenStyles.cardDescription}>{player.status_note || t('dashboard.noStatusNote')}</Text>
+          </View>
+          <Text style={styles.statusBadge}>{t(`playerForm.statuses.${player.status}`)}</Text>
+        </AnimatedPressable>
+      ))}
+    </View>
+  );
+}
+
+function DashboardEvent({ event, staff, locale, onPress }: { event: ScheduleEvent; staff: EventStaffAssignment[]; locale: string; onPress: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <AnimatedPressable accessibilityRole="button" onPress={onPress} style={styles.eventRow}>
+      <View style={styles.eventTime}><Text style={styles.eventTimeText}>{formatTime(event.starts_at, locale)}</Text></View>
+      <View style={styles.teamCopy}>
+        <Text style={styles.playerName}>{event.title}</Text>
+        <Text style={appScreenStyles.meta}>{t(`schedule.eventTypes.${event.event_type}`)} • {event.location || t('calendar.noLocation')}</Text>
+        {event.event_type === 'practice' ? (
           <Text style={appScreenStyles.meta}>
-            {[team.level, team.season].filter(Boolean).join(' / ') ||
-              t('teamSwitcher.noDetails')}
+            {t('schedule.goalieCoach', {
+              value: event.goalie_coach_attending ? t('common.yes') : t('common.no'),
+            })}
           </Text>
-        </View>
+        ) : null}
+        {staff.length > 0 ? <Text numberOfLines={1} style={appScreenStyles.meta}>{staff.map((row) => `${row.coach_name}: ${t(`schedule.statuses.${row.status}`)}`).join(' • ')}</Text> : null}
       </View>
-      {playersCountQuery.error || gamesQuery.error ? (
-        <Text style={appScreenStyles.error}>
-          {t('teamTab.dashboardLoadError')}
-        </Text>
-      ) : null}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            {playersCountQuery.isLoading
-              ? t('common.loading')
-              : playersCountQuery.data ?? 0}
-          </Text>
-          <Text style={styles.statLabel}>{t('teamTab.rosterSizeLabel')}</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            {gamesQuery.isLoading
-              ? t('common.loading')
-              : t('teamTab.recordValue', record)}
-          </Text>
-          <Text style={styles.statLabel}>{t('teamTab.recordLabel')}</Text>
-        </View>
-      </View>
-      <View style={styles.nextGameCard}>
-        <Text style={styles.sectionTitle}>{t('teamTab.nextGameTitle')}</Text>
-        {gamesQuery.isLoading ? (
-          <Text style={appScreenStyles.note}>{t('common.loading')}</Text>
-        ) : nextGame ? (
-          <>
-            <Text style={styles.nextGameOpponent}>
-              {t('games.opponentTitle', {
-                opponentName: nextGame.opponent_name,
-              })}
-            </Text>
-            <Text style={appScreenStyles.meta}>
-              {formatGameDate(nextGame.game_date)}
-            </Text>
-            <Text style={appScreenStyles.meta}>
-              {nextGame.is_home
-                ? t('games.homeBadge')
-                : t('games.awayBadge')}
-            </Text>
-            <AppButton
-              icon="open-outline"
-              title={t('teamTab.openNextGameButton')}
-              onPress={() => onOpenGame(nextGame.id)}
-            />
-          </>
-        ) : games.length === 0 ? (
-          <Text style={appScreenStyles.note}>
-            {t('teamTab.noGamesDescription')}
-          </Text>
-        ) : (
-          <Text style={appScreenStyles.note}>
-            {t('teamTab.noUpcomingGameDescription')}
-          </Text>
-        )}
-      </View>
-    </View>
+    </AnimatedPressable>
   );
-}
-
-function AssistantTeamRosterAccess({
-  activeTeamId,
-  navigation,
-  teams,
-  onSelectTeam,
-}: {
-  activeTeamId: string | null;
-  navigation: Props['navigation'];
-  teams: ActiveTeam[];
-  onSelectTeam: (team: ActiveTeam) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={appScreenStyles.card}>
-      <Text style={appScreenStyles.cardTitle}>
-        {t('teamTab.assistantTeamsTitle')}
-      </Text>
-      <Text style={appScreenStyles.cardDescription}>
-        {t('teamTab.assistantTeamsDescription')}
-      </Text>
-      <View style={styles.list}>
-        {teams.map((team) => {
-          const isSelected = activeTeamId === team.id;
-
-          return (
-            <View key={team.id} style={styles.assistantTeamCard}>
-              <View style={styles.dashboardTitleBlock}>
-                <Text style={appScreenStyles.cardTitle}>{team.name}</Text>
-                <Text style={appScreenStyles.meta}>
-                  {[team.level, team.season].filter(Boolean).join(' / ') ||
-                    t('teamSwitcher.noDetails')}
-                </Text>
-              </View>
-              {isSelected ? (
-                <Text style={appScreenStyles.note}>
-                  {t('teamTab.assistantTeamActiveNotice')}
-                </Text>
-              ) : null}
-              <AppButton
-                icon="people-outline"
-                title={t('teamTab.openReadOnlyRosterButton')}
-                onPress={() => {
-                  onSelectTeam(team);
-                  navigation.navigate('RosterTab');
-                }}
-              />
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function getTeamInitials(teamName: string) {
-  const initials = teamName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('');
-
-  return initials || 'CL';
 }
 
 const styles = StyleSheet.create({
-  activeTeamName: {
-    color: goalRed,
-  },
-  activeTeamRow: {
-    backgroundColor: colors.cardPressed,
-    borderColor: goalRed,
-  },
-  assistantTeamCard: {
-    backgroundColor: colors.fieldBackground,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  dashboardHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  dashboardTitleBlock: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  list: {
-    gap: spacing.sm,
-  },
-  logoFrame: {
-    alignItems: 'center',
-    backgroundColor: colors.cardPressed,
-    borderColor: goalRed,
-    borderRadius: 32,
-    borderWidth: 2,
-    height: 64,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 64,
-  },
-  logoImage: {
-    height: '100%',
-    width: '100%',
-  },
-  logoPlaceholder: {
-    color: goalRed,
-    fontFamily: fonts.display,
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  nextGameCard: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  nextGameOpponent: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  statCard: {
-    backgroundColor: colors.cardPressed,
-    borderRadius: 10,
-    flex: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  statLabel: {
-    color: slateGrey,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  statValue: {
-    color: colors.textPrimary,
-    fontFamily: fonts.display,
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  teamName: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  teamRow: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
+  countBadge: { backgroundColor: colors.cardPressed, borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  countText: { color: colors.textPrimary, fontSize: 12, fontWeight: '800' },
+  eventRow: { alignItems: 'flex-start', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
+  eventTime: { backgroundColor: colors.rinkNavy, borderRadius: radii.sm, padding: spacing.sm },
+  eventTimeText: { color: colors.iceWhite, fontSize: 12, fontWeight: '800' },
+  playerName: { color: colors.textPrimary, fontWeight: '800' },
+  playerRow: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
+  sectionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900', marginTop: spacing.sm },
+  statusBadge: { backgroundColor: colors.dangerSoft, borderRadius: radii.pill, color: colors.goalRed, fontSize: 11, fontWeight: '900', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  teamCopy: { flex: 1 },
+  teamName: { color: colors.textPrimary, fontSize: 21, fontWeight: '900' },
 });

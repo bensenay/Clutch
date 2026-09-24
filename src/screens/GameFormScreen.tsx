@@ -320,7 +320,7 @@ export function GameFormScreen({ navigation, route }: Props) {
       return;
     }
 
-    navigation.replace('MainTabs', { screen: 'GameDayTab' });
+    navigation.replace('MainTabs', { screen: 'ScheduleTab' });
   }
 
   async function deleteGame() {
@@ -349,7 +349,7 @@ export function GameFormScreen({ navigation, route }: Props) {
     await queryClient.invalidateQueries({ queryKey: ['calendar-games'] });
     await queryClient.invalidateQueries({ queryKey: ['team-dashboard-games'] });
     setIsSubmitting(false);
-    navigation.replace('MainTabs', { screen: 'GameDayTab' });
+    navigation.replace('MainTabs', { screen: 'ScheduleTab' });
   }
 
   function confirmDeleteGame() {

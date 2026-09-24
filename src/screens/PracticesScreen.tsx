@@ -22,7 +22,7 @@ import { spacing } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 
 type Props = CompositeScreenProps<
-  BottomTabScreenProps<AuthenticatedTabParamList, 'PracticesTab'>,
+  BottomTabScreenProps<AuthenticatedTabParamList, 'PracticeTab'>,
   NativeStackScreenProps<AuthenticatedStackParamList>
 >;
 

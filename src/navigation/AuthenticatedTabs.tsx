@@ -3,10 +3,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import { AppIcon } from '../components/AppIcon';
-import { GameListScreen } from '../screens/GameListScreen';
+import { HeaderMenuButton, HeaderTeamSelector } from '../components/AppHeader';
 import { PracticesScreen } from '../screens/PracticesScreen';
 import { RosterScreen } from '../screens/RosterScreen';
-import { TeamTabScreen } from '../screens/TeamTabScreen';
+import { ScheduleScreen } from '../screens/ScheduleScreen';
 import {
   colors,
   fonts,
@@ -35,6 +35,8 @@ export function AuthenticatedTabs({ navigation }: AuthenticatedTabsProps) {
   return (
     <Tab.Navigator
       screenOptions={{
+        headerLeft: () => <HeaderMenuButton />,
+        headerTitle: () => <HeaderTeamSelector />,
         headerRight: () => (
           <AnimatedPressable
             accessibilityLabel={t('settings.openLabel')}
@@ -58,14 +60,14 @@ export function AuthenticatedTabs({ navigation }: AuthenticatedTabsProps) {
       }}
     >
       <Tab.Screen
-        component={TeamTabScreen}
-        name="TeamTab"
+        component={ScheduleScreen}
+        name="ScheduleTab"
         options={{
           tabBarIcon: ({ color, size }) => (
-            <AppIcon color={color} name="shield-outline" size={size} />
+            <AppIcon color={color} name="calendar-outline" size={size} />
           ),
-          tabBarLabel: t('tabs.team'),
-          title: t('tabs.team'),
+          tabBarLabel: t('tabs.schedule'),
+          title: t('tabs.schedule'),
         }}
       />
       <Tab.Screen
@@ -80,25 +82,14 @@ export function AuthenticatedTabs({ navigation }: AuthenticatedTabsProps) {
         }}
       />
       <Tab.Screen
-        component={GameListScreen}
-        name="GameDayTab"
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <AppIcon color={color} name="calendar-outline" size={size} />
-          ),
-          tabBarLabel: t('tabs.gameDay'),
-          title: t('tabs.gameDay'),
-        }}
-      />
-      <Tab.Screen
         component={PracticesScreen}
-        name="PracticesTab"
+        name="PracticeTab"
         options={{
           tabBarIcon: ({ color, size }) => (
             <AppIcon color={color} name="clipboard-outline" size={size} />
           ),
-          tabBarLabel: t('tabs.practices'),
-          title: t('tabs.practices'),
+          tabBarLabel: t('tabs.practice'),
+          title: t('tabs.practice'),
         }}
       />
     </Tab.Navigator>

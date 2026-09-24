@@ -96,7 +96,7 @@ export function TeamFormScreen({ navigation }: Props) {
     setActiveTeam(data as ActiveTeam);
     await queryClient.invalidateQueries({ queryKey: ['director-teams'] });
     setIsSaving(false);
-    navigation.replace('MainTabs', { screen: 'TeamTab' });
+    navigation.replace('Dashboard');
   }
 
   if (profileQuery.isLoading) {

@@ -14,6 +14,8 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { TeamFormScreen } from '../screens/TeamFormScreen';
 import { SuperAdminScreen } from '../screens/SuperAdminScreen';
 import { SchoolDrillLibraryScreen } from '../screens/SchoolDrillLibraryScreen';
+import { ScheduleEventFormScreen } from '../screens/ScheduleEventFormScreen';
+import { TeamTabScreen } from '../screens/TeamTabScreen';
 import { fonts, iceWhite, rinkNavy } from '../theme/theme';
 import type { AuthenticatedStackParamList } from './types';
 
@@ -46,6 +48,11 @@ export function AuthenticatedStack() {
         options={{ title: t('settings.title') }}
       />
       <Stack.Screen
+        component={TeamTabScreen}
+        name="Dashboard"
+        options={{ title: t('dashboard.title') }}
+      />
+      <Stack.Screen
         component={TeamFormScreen}
         name="TeamForm"
         options={{ title: t('teamForm.headerTitle') }}
@@ -69,6 +76,11 @@ export function AuthenticatedStack() {
         component={DirectorAssistantCoachesScreen}
         name="DirectorAssistantCoaches"
         options={{ title: t('directorAssistantCoaches.headerTitle') }}
+      />
+      <Stack.Screen
+        component={ScheduleEventFormScreen}
+        name="ScheduleEventForm"
+        options={{ title: t('scheduleForm.title') }}
       />
       <Stack.Screen
         component={PlayerFormScreen}

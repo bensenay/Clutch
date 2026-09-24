@@ -11,6 +11,7 @@ export type AuthStackParamList = {
 
 export type AuthenticatedStackParamList = {
   MainTabs: NavigatorScreenParams<AuthenticatedTabParamList> | undefined;
+  Dashboard: undefined;
   Settings: undefined;
   TeamForm: undefined;
   SuperAdmin: undefined;
@@ -21,16 +22,29 @@ export type AuthenticatedStackParamList = {
   SchoolDrillLibrary: undefined;
   DrillEditor: { drillId?: string; readOnly?: boolean } | undefined;
   PracticePlanDetail:
-    | { practicePlanId?: string; readOnly?: boolean }
+    | {
+        practicePlanId?: string;
+        readOnly?: boolean;
+        scheduleEventId?: string;
+        scheduledAt?: string;
+      }
     | undefined;
   DirectorAllTeams: undefined;
   DirectorSettings: undefined;
   DirectorAssistantCoaches: undefined;
+  ScheduleEventForm:
+    | {
+        eventId?: string;
+        defaultDate?: string;
+        defaultHour?: number;
+        teamId?: string;
+        coachId?: string;
+      }
+    | undefined;
 };
 
 export type AuthenticatedTabParamList = {
-  TeamTab: undefined;
+  ScheduleTab: { eventId?: string } | undefined;
   RosterTab: undefined;
-  GameDayTab: undefined;
-  PracticesTab: undefined;
+  PracticeTab: undefined;
 };

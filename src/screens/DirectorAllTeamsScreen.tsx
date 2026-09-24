@@ -158,7 +158,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
               title={t('directorAllTeams.viewGamesButton')}
               onPress={() => {
                 setActiveTeam(team);
-                navigation.navigate('MainTabs', { screen: 'GameDayTab' });
+                navigation.navigate('MainTabs', { screen: 'ScheduleTab' });
               }}
             />
           </View>

@@ -38,7 +38,7 @@ import {
 } from '../theme/theme';
 
 type Props = CompositeScreenProps<
-  BottomTabScreenProps<AuthenticatedTabParamList, 'GameDayTab'>,
+  BottomTabScreenProps<AuthenticatedTabParamList, 'ScheduleTab'>,
   NativeStackScreenProps<AuthenticatedStackParamList>
 >;
 
