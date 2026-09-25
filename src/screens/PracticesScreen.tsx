@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import { AppButton } from '../components/AppButton';
+import { AppIcon, type AppIconName } from '../components/AppIcon';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingState } from '../components/LoadingState';
@@ -18,7 +19,7 @@ import type {
 import { fetchWithCache, makeTeamCacheKey } from '../offline/cache';
 import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { spacing } from '../theme/theme';
+import { colors, goalRed, radii, sizes, spacing } from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 
 type Props = CompositeScreenProps<
@@ -110,19 +111,20 @@ export function PracticesScreen({ navigation }: Props) {
           </View>
         </View>
         <View style={styles.drillActions}>
-          <AppButton
-            icon="library-outline"
+          <PracticeLibraryAction
+            icon="book-outline"
             title={t('practices.openDrillLibraryButton')}
             onPress={() => navigation.navigate('DrillLibrary')}
           />
-          <AppButton
-            icon="school-outline"
+          <PracticeLibraryAction
+            icon="people-outline"
             title={t('practices.openSchoolDrillLibraryButton')}
             onPress={() => navigation.navigate('SchoolDrillLibrary')}
           />
           {isReadOnlyTeam ? null : (
-            <AppButton
-              icon="add-circle-outline"
+            <PracticeLibraryAction
+              accent
+              icon="create-outline"
               title={t('practices.addDrillButton')}
               onPress={() => navigation.navigate('DrillEditor')}
             />
@@ -173,17 +175,73 @@ export function PracticesScreen({ navigation }: Props) {
   );
 }
 
+function PracticeLibraryAction({
+  accent = false,
+  icon,
+  title,
+  onPress,
+}: {
+  accent?: boolean;
+  icon: AppIconName;
+  title: string;
+  onPress: () => void;
+}) {
+  return (
+    <AnimatedPressable
+      accessibilityLabel={title}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.libraryAction, accent && styles.libraryActionAccent]}
+    >
+      <View style={[styles.libraryIcon, accent && styles.libraryIconAccent]}>
+        <AppIcon color={accent ? colors.iceWhite : goalRed} name={icon} size={24} />
+      </View>
+      <Text style={styles.libraryActionText}>{title}</Text>
+      <AppIcon color={colors.slateGrey} name="chevron-forward" size={18} />
+    </AnimatedPressable>
+  );
+}
+
 function countSegments(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
 }
 
 const styles = StyleSheet.create({
   drillActions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  libraryAction: {
+    alignItems: 'center',
+    backgroundColor: colors.fieldBackground,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    minHeight: 56,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  libraryActionAccent: {
+    borderColor: goalRed,
+  },
+  libraryActionText: {
+    color: colors.textPrimary,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  libraryIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radii.md,
+    height: sizes.touch,
+    justifyContent: 'center',
+    width: sizes.touch,
+  },
+  libraryIconAccent: {
+    backgroundColor: goalRed,
   },
   drillHeaderCopy: {
     flex: 1,

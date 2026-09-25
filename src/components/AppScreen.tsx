@@ -14,17 +14,20 @@ import {
   slateGrey,
   spacing,
 } from '../theme/theme';
+import { RinkWatermark } from './RinkWatermark';
 
 type AppScreenProps = PropsWithChildren<{
   title: string;
   description?: string;
   action?: ReactNode;
+  background?: ReactNode;
 }>;
 
 export function AppScreen({
   title,
   description,
   action,
+  background,
   children,
 }: AppScreenProps) {
   const { t } = useTranslation();
@@ -34,6 +37,9 @@ export function AppScreen({
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
+      <View pointerEvents="none" style={styles.background}>
+        {background ?? <RinkWatermark />}
+      </View>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>{t('common.brand')}</Text>
         <Text style={styles.title}>{title}</Text>
@@ -98,6 +104,13 @@ export const appScreenStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  background: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
   container: {
     backgroundColor: colors.rinkNavy,
     flexGrow: 1,

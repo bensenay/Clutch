@@ -9,6 +9,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingState } from '../components/LoadingState';
+import { RinkWatermark } from '../components/RinkWatermark';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { addDays, endOfDay, formatTime, startOfDay } from '../schedule/dates';
 import type { EventStaffAssignment, ScheduleEvent } from '../schedule/types';
@@ -97,10 +98,12 @@ export function TeamTabScreen({ navigation }: Props) {
 
   const isLoading = isLoadingTeams || playersQuery.isLoading || eventsQuery.isLoading || staffQuery.isLoading;
   const hasError = teamsError || Boolean(playersQuery.error || eventsQuery.error || staffQuery.error);
+  const watermarkLogoUrl = dashboardTeams.length === 1 ? dashboardTeams[0].logo_url : null;
 
   return (
     <AppScreen
       action={role === 'director' ? <AppButton icon="add-circle-outline" title={t('teamForm.addButton')} onPress={() => navigation.navigate('TeamForm')} /> : undefined}
+      background={<RinkWatermark logoUrl={watermarkLogoUrl} />}
       description={role === 'director' ? t('dashboard.directorDescription') : t('dashboard.coachDescription', { teamName: activeTeam?.name ?? '' })}
       title={t('dashboard.title')}
     >

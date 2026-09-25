@@ -19,6 +19,7 @@ import {
   slateGrey,
   spacing,
 } from '../theme/theme';
+import { RinkWatermark } from './RinkWatermark';
 
 type AuthScreenProps = PropsWithChildren<{
   title: string;
@@ -39,6 +40,7 @@ export function AuthScreen({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.flex}
     >
+      <RinkWatermark />
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"

@@ -14,6 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { LoadingState } from '../components/LoadingState';
+import { RinkWatermark } from '../components/RinkWatermark';
 import { CompleteCoachOnboardingScreen } from '../screens/CompleteCoachOnboardingScreen';
 import { ActiveTeamProvider } from '../teams/ActiveTeamContext';
 import { rinkNavy, spacing } from '../theme/theme';
@@ -31,6 +32,7 @@ export function RootNavigator() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
+        <RinkWatermark />
         <LoadingState />
       </View>
     );
@@ -74,6 +76,7 @@ function AuthenticatedGate({ session }: { session: Session }) {
   if (profileQuery.isLoading) {
     return (
       <View style={styles.centered}>
+        <RinkWatermark />
         <LoadingState />
       </View>
     );
