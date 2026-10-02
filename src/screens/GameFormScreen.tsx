@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -393,7 +394,7 @@ export function GameFormScreen({ navigation, route }: Props) {
       {gameQuery.error ? (
         <Text style={appScreenStyles.error}>{t('gameForm.loadError')}</Text>
       ) : null}
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <FormField
           autoCapitalize="words"
           label={t('gameForm.opponentNameLabel')}
@@ -569,16 +570,14 @@ export function GameFormScreen({ navigation, route }: Props) {
                   readOnly: isReadOnly,
                 })
               }
+              variant="secondary"
             />
             <AppButton
               disabled={isSubmitting || gameQuery.isLoading || isExporting}
-              icon="download-outline"
-              title={
-                isExporting
-                  ? t('gameForm.exporting')
-                  : t('gameForm.exportButton')
-              }
-              onPress={() => void handleExport()}
+              icon="document-text-outline"
+              title={t('gameForm.exportButton')}
+              onPress={() => navigation.navigate('GamePlan', { gameId })}
+              variant="secondary"
             />
             {isReadOnly ? null : (
               <AppButton
@@ -591,7 +590,7 @@ export function GameFormScreen({ navigation, route }: Props) {
             )}
           </>
         ) : null}
-      </View>
+      </Card>
     </AppScreen>
   );
 }
@@ -1319,7 +1318,7 @@ const styles = StyleSheet.create({
   selectorOption: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: radii.pill,
+    borderRadius: radii.chip,
     borderWidth: 1,
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.control,

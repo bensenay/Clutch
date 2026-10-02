@@ -1,4 +1,5 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { Card } from '../components/Card';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -551,6 +552,7 @@ export function GameListScreen({ navigation }: Props) {
                   : t('calendar.exportButton')
               }
               onPress={() => void exportCurrentView()}
+              variant="secondary"
             />
           )}
         </View>
@@ -669,6 +671,7 @@ function GameScheduleList({
                 icon="add-circle-outline"
                 title={t('games.addFirstGameButton')}
                 onPress={navigateToNewGame}
+                variant="secondary"
               />
             ) : undefined
           }
@@ -676,7 +679,7 @@ function GameScheduleList({
       ) : null}
       <View style={appScreenStyles.list}>
         {events.map((event) => (
-          <View key={`${event.type}-${event.id}`} style={appScreenStyles.card}>
+          <Card key={`${event.type}-${event.id}`} style={appScreenStyles.card}>
             <AnimatedPressable
               accessibilityRole="button"
               onPress={() => navigateToGame(event)}
@@ -711,8 +714,9 @@ function GameScheduleList({
                   : t('gameForm.lineupButton')
               }
               onPress={() => navigateToLineup(event)}
+              variant="secondary"
             />
-          </View>
+          </Card>
         ))}
       </View>
     </>
@@ -746,7 +750,7 @@ function MonthScheduleView({
           onMonthChange={(month) => onMonthChange(month.dateString)}
         />
       </View>
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('calendar.selectedDayTitle', {
             date: formatDateOnly(selectedDateKey),
@@ -757,7 +761,7 @@ function MonthScheduleView({
           events={events}
           onOpenEvent={onOpenEvent}
         />
-      </View>
+      </Card>
     </View>
   );
 }
@@ -781,7 +785,7 @@ function WeekScheduleView({
 
   return (
     <View style={styles.calendarStack}>
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('calendar.weekTitle', { range: formatWeekRange(weekDays) })}
         </Text>
@@ -830,8 +834,8 @@ function WeekScheduleView({
             );
           })}
         </View>
-      </View>
-      <View style={appScreenStyles.card}>
+      </Card>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('calendar.selectedDayTitle', {
             date: formatDateOnly(selectedDateKey),
@@ -842,7 +846,7 @@ function WeekScheduleView({
           events={selectedDateEvents}
           onOpenEvent={onOpenEvent}
         />
-      </View>
+      </Card>
     </View>
   );
 }

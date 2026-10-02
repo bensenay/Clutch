@@ -9,7 +9,7 @@
     "backgroundColor": "#0B1F33",
     "ios": {
       "supportsTablet": true,
-      "requireFullScreen": false
+      "requireFullScreen": true
     },
     "android": {
       "adaptiveIcon": {

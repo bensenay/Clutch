@@ -4,13 +4,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
-import { AnimatedPressable } from '../components/AnimatedPressable';
 import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { EmptyState } from '../components/EmptyState';
+import { LockerStall } from '../components/LockerStall';
 import { LoadingState } from '../components/LoadingState';
 import type {
   AuthenticatedStackParamList,
@@ -19,7 +19,11 @@ import type {
 import { fetchWithCache, makeTeamCacheKey } from '../offline/cache';
 import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { colors, fonts, goalRed, spacing } from '../theme/theme';
+import { spacing } from '../theme/theme';
+
+const ROSTER_MAX_WIDTH = 900;
+const ROSTER_SCREEN_PADDING = spacing.xl * 2;
+const MAX_STALL_WIDTH = 220;
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AuthenticatedTabParamList, 'RosterTab'>,
@@ -50,6 +54,7 @@ export type Player = {
 
 export function RosterScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
   const { activeTeam, isReadOnlyTeam } = useActiveTeam();
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const isAssistantCoachRoster =
@@ -108,6 +113,70 @@ export function RosterScreen({ navigation }: Props) {
   }
 
   const players = playersQuery.data ?? [];
+  const availableWidth = Math.min(
+    Math.max(screenWidth - ROSTER_SCREEN_PADDING, 0),
+    ROSTER_MAX_WIDTH,
+  );
+  const stallGap = screenWidth < 400 ? spacing.xs : spacing.md;
+  const stallWidth = Math.min(
+    (availableWidth - stallGap * 2) / 3,
+    MAX_STALL_WIDTH,
+  );
+  const formationWidth = stallWidth * 3 + stallGap * 2;
+  const playersByPosition: Array<{
+    columns: number;
+    players: Player[];
+    position: NaturalPosition;
+  }> = [
+    {
+      columns: 3,
+      players: players.filter((player) => player.natural_position === 'F'),
+      position: 'F',
+    },
+    {
+      columns: 2,
+      players: players.filter((player) => player.natural_position === 'D'),
+      position: 'D',
+    },
+    {
+      columns: 1,
+      players: players.filter((player) => player.natural_position === 'G'),
+      position: 'G',
+    },
+  ];
+
+  const renderStall = (player: Player) => {
+    const playerName = `${player.first_name} ${player.last_name}`;
+    const statusLabel = t(`playerForm.statuses.${player.status}`);
+
+    return (
+      <LockerStall
+        accessibilityLabel={t('roster.openPlayerDetailsAccessibility', {
+          name: playerName,
+          number: player.jersey_number ?? '--',
+          status: statusLabel,
+        })}
+        detailsLabel={t('roster.viewDetails')}
+        firstName={player.first_name}
+        jerseyNumber={player.jersey_number}
+        key={player.id}
+        lastName={player.last_name}
+        positionLabel={t(`playerForm.positions.${player.natural_position}`)}
+        primaryColor={activeTeam.primary_color}
+        secondaryColor={activeTeam.secondary_color}
+        status={player.status}
+        statusLabel={statusLabel}
+        tertiaryColor={activeTeam.tertiary_color}
+        width={stallWidth}
+        onPress={() =>
+          navigation.navigate('PlayerForm', {
+            playerId: player.id,
+            readOnly: isReadOnlyRoster,
+          })
+        }
+      />
+    );
+  };
 
   return (
     <AppScreen
@@ -121,6 +190,7 @@ export function RosterScreen({ navigation }: Props) {
         )
       }
       description={t('roster.description', { teamName: activeTeam.name })}
+      contentMaxWidth={ROSTER_MAX_WIDTH}
       title={t('roster.title')}
     >
       {playersQuery.isLoading ? (
@@ -141,106 +211,62 @@ export function RosterScreen({ navigation }: Props) {
                 icon="person-add-outline"
                 title={t('roster.addFirstPlayerButton')}
                 onPress={() => navigation.navigate('PlayerForm')}
+                variant="secondary"
               />
             )
           }
         />
       ) : null}
-      <View style={appScreenStyles.list}>
-        {players.map((player) => (
-          <AnimatedPressable
-            accessibilityRole="button"
-            key={player.id}
-            onPress={() =>
-              navigation.navigate('PlayerForm', {
-                playerId: player.id,
-                readOnly: isReadOnlyRoster,
-              })
-            }
-            style={appScreenStyles.card}
-          >
-            <View style={appScreenStyles.row}>
-              <View style={styles.identity}>
-                <Text style={styles.jersey}>
-                  {player.jersey_number
-                    ? t('roster.jerseyNumber', {
-                        number: player.jersey_number,
-                      })
-                    : t('roster.noJerseyNumber')}
+      {players.length > 0 ? (
+        <View style={[styles.formation, { width: formationWidth }]}>
+          {playersByPosition.map((group) =>
+            group.players.length > 0 ? (
+              <View key={group.position} style={styles.positionSection}>
+                <Text style={styles.positionHeading}>
+                  {t(`roster.positionGroups.${group.position}`)}
                 </Text>
-                <View style={styles.nameBlock}>
-                  <Text style={appScreenStyles.cardTitle}>
-                    {player.first_name} {player.last_name}
-                  </Text>
-                  <Text style={appScreenStyles.meta}>
-                    {t(`playerForm.positions.${player.natural_position}`)}
-                  </Text>
+                <View
+                  style={[
+                    styles.positionGrid,
+                    {
+                      gap: stallGap,
+                      width:
+                        stallWidth * group.columns +
+                        stallGap * (group.columns - 1),
+                    },
+                  ]}
+                >
+                  {group.players.map(renderStall)}
                 </View>
               </View>
-              <StatusBadge status={player.status} />
-            </View>
-          </AnimatedPressable>
-        ))}
-      </View>
+            ) : null,
+          )}
+        </View>
+      ) : null}
     </AppScreen>
   );
 }
 
-function StatusBadge({ status }: { status: PlayerStatus }) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={[styles.badge, styles[`${status}Badge`]]}>
-      <Text style={[styles.badgeText, styles[`${status}BadgeText`]]}>
-        {t(`playerForm.statuses.${status}`)}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  activeBadge: {
-    backgroundColor: colors.successSoft,
+  formation: {
+    alignSelf: 'center',
+    gap: spacing.xl,
+    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
   },
-  activeBadgeText: {
-    color: colors.success,
-  },
-  badge: {
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  identity: {
-    alignItems: 'center',
-    flex: 1,
+  positionGrid: {
+    alignSelf: 'center',
     flexDirection: 'row',
-    gap: spacing.md,
+    flexWrap: 'wrap',
   },
-  injuredBadge: {
-    backgroundColor: colors.dangerSoft,
-  },
-  injuredBadgeText: {
-    color: goalRed,
-  },
-  jersey: {
-    color: colors.textPrimary,
-    fontFamily: fonts.display,
+  positionHeading: {
+    color: '#E4E8EB',
     fontSize: 18,
     fontWeight: '800',
-    minWidth: 44,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
-  nameBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  suspendedBadge: {
-    backgroundColor: colors.dangerSoft,
-  },
-  suspendedBadgeText: {
-    color: goalRed,
+  positionSection: {
+    gap: spacing.md,
   },
 });

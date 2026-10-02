@@ -127,6 +127,7 @@ export function DrillLibraryScreen({ navigation }: Props) {
               })
             }
             style={appScreenStyles.card}
+            surface
           >
             <Text style={appScreenStyles.cardTitle}>{drill.name}</Text>
             <Text style={appScreenStyles.cardDescription}>

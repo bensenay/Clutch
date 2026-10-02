@@ -29,7 +29,13 @@ import type {
   StaffRole,
 } from '../schedule/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { colors, radii, spacing } from '../theme/theme';
+import {
+  colors,
+  radii,
+  selectionStyles,
+  shadows,
+  spacing,
+} from '../theme/theme';
 
 type Props = NativeStackScreenProps<AuthenticatedStackParamList, 'ScheduleEventForm'>;
 
@@ -420,9 +426,12 @@ export function ScheduleEventFormScreen({ navigation, route }: Props) {
       {openPicker ? (
         <View style={styles.pickerCard}>
           <DateTimePicker
+            accentColor={colors.goalRed}
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             mode={openPicker === 'date' ? 'date' : 'time'}
             onChange={changePicker}
+            textColor={Platform.OS === 'ios' ? colors.iceWhite : undefined}
+            themeVariant={Platform.OS === 'ios' ? 'dark' : undefined}
             value={openPicker === 'end' ? endsAt : startsAt}
           />
           {Platform.OS === 'ios' ? (
@@ -521,8 +530,14 @@ function ChoiceSection({ label, options, selected, onToggle, single = false }: {
               onPress={() => onToggle(option.id)}
               style={[styles.choice, active && styles.choiceActive]}
             >
-              <Text style={styles.choiceText}>{option.label}</Text>
-              {option.meta ? <Text style={styles.choiceMeta}>{option.meta}</Text> : null}
+              <Text style={[styles.choiceText, active && styles.choiceTextActive]}>
+                {option.label}
+              </Text>
+              {option.meta ? (
+                <Text style={[styles.choiceMeta, active && styles.choiceMetaActive]}>
+                  {option.meta}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -572,8 +587,10 @@ async function syncStaff(eventId: string, selected: CoachOption[], existing: Eve
 }
 
 function makeInitialStart(params: Props['route']['params']) {
-  const base = params?.defaultDate ? new Date(`${params.defaultDate}T12:00:00`) : new Date();
-  base.setHours(params?.defaultHour ?? Math.max(8, base.getHours() + 1), 0, 0, 0);
+  const now = new Date();
+  const base = params?.defaultDate ? new Date(`${params.defaultDate}T12:00:00`) : now;
+  const defaultHour = Math.min(23, Math.max(8, now.getHours() + 1));
+  base.setHours(params?.defaultHour ?? defaultHour, 0, 0, 0);
   return base;
 }
 
@@ -585,18 +602,22 @@ function mergeDateAndTime(datePart: Date, timePart: Date) {
 
 const styles = StyleSheet.create({
   choice: {
+    backgroundColor: colors.rinkSurface,
     borderColor: colors.border,
     borderRadius: radii.md,
     borderWidth: 1,
     minWidth: 130,
     padding: spacing.md,
   },
-  choiceActive: { backgroundColor: colors.cardPressed, borderColor: colors.goalRed },
+  choiceActive: { ...selectionStyles.active },
   choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   choiceMeta: { color: colors.slateGrey, fontSize: 12, marginTop: spacing.xs },
+  choiceMetaActive: { ...selectionStyles.activeText },
   choiceSection: { gap: spacing.sm },
-  choiceText: { color: colors.textPrimary, fontWeight: '700' },
+  choiceText: { color: colors.iceWhite, fontWeight: '700' },
+  choiceTextActive: { ...selectionStyles.activeText },
   dateButton: {
+    ...shadows.subtle,
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.md,
@@ -609,9 +630,16 @@ const styles = StyleSheet.create({
   dateButtonValue: { color: colors.textPrimary, fontWeight: '700', marginTop: spacing.xs },
   dateRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   label: { color: colors.iceWhite, fontSize: 15, fontWeight: '700' },
-  pickerCard: { backgroundColor: colors.card, borderRadius: radii.lg, padding: spacing.md },
+  pickerCard: {
+    ...shadows.subtle,
+    backgroundColor: colors.rinkSurface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+  },
   segment: { alignItems: 'center', borderRadius: radii.md, flex: 1, padding: spacing.md },
-  segmentActive: { backgroundColor: colors.goalRed },
+  segmentActive: { ...selectionStyles.active },
   segmentText: { color: colors.iceWhite, fontWeight: '700' },
   segmented: { backgroundColor: colors.rinkSurface, borderRadius: radii.md, flexDirection: 'row', padding: spacing.xs },
   switchRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },

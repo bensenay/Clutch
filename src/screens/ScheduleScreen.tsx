@@ -7,7 +7,9 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -55,6 +57,8 @@ import {
   fontSizes,
   hornAmber,
   radii,
+  selectionStyles,
+  shadows,
   spacing,
 } from '../theme/theme';
 
@@ -152,7 +156,7 @@ export function ScheduleScreen({ navigation, route }: Props) {
     setSelectedDateKey(toDateKey(next));
   }
 
-  function createAt(dateKey = selectedDateKey, hour?: number) {
+  function createAt(dateKey = toDateKey(new Date()), hour?: number) {
     navigation.navigate('ScheduleEventForm', {
       defaultDate: dateKey,
       defaultHour: hour,
@@ -508,7 +512,16 @@ function EventDetailModal({ event, staff, teamName, onClose, onEdit, onOpenGame,
     <Modal animationType="slide" onRequestClose={onClose} transparent visible>
       <SafeAreaView style={styles.detailRoot}>
         <Pressable onPress={onClose} style={styles.detailBackdrop} />
-        <ScrollView contentContainerStyle={styles.detailCard}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.detailKeyboard}
+        >
+          <ScrollView
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            contentContainerStyle={styles.detailCard}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardShouldPersistTaps="handled"
+          >
           <View style={styles.detailHeader}>
             <View style={styles.detailHeaderCopy}>
               <Text style={appScreenStyles.cardTitle}>{event.title}</Text>
@@ -533,7 +546,7 @@ function EventDetailModal({ event, staff, teamName, onClose, onEdit, onOpenGame,
             <View style={styles.responseBox}>
               <FormField label={t('schedule.ownNoteLabel')} multiline onChangeText={setCoachNote} value={coachNote} />
               <View style={styles.actionRow}>
-                <AppButton icon="checkmark-circle-outline" title={t('schedule.accept')} onPress={() => void respond('confirmed')} />
+                <AppButton icon="checkmark-circle-outline" title={t('schedule.accept')} onPress={() => void respond('confirmed')} variant="secondary" />
                 <AppButton icon="close-circle-outline" title={t('schedule.decline')} onPress={() => void respond('declined')} variant="secondary" />
               </View>
             </View>
@@ -550,23 +563,24 @@ function EventDetailModal({ event, staff, teamName, onClose, onEdit, onOpenGame,
               <View style={styles.actionRow}>
                 {recipients.map((recipient) => (
                   <Pressable key={recipient.coach_user_id} onPress={() => setRecipientId(recipient.coach_user_id)} style={[styles.recipientChip, recipientId === recipient.coach_user_id && styles.recipientChipActive]}>
-                    <Text style={styles.recipientText}>{recipient.coach_name}</Text>
+                    <Text style={[styles.recipientText, recipientId === recipient.coach_user_id && styles.selectedControlText]}>{recipient.coach_name}</Text>
                   </Pressable>
                 ))}
               </View>
               <FormField label={t('schedule.messageLabel')} multiline onChangeText={setMessage} value={message} />
-              <AppButton disabled={!recipientId || !message.trim()} icon="send-outline" title={t('schedule.send')} onPress={() => void sendMessage()} />
+              <AppButton disabled={!recipientId || !message.trim()} icon="send-outline" title={t('schedule.send')} onPress={() => void sendMessage()} variant="secondary" />
             </View>
           ) : null}
           <View style={styles.actionRow}>
-            {canEdit ? <AppButton icon="create-outline" title={t('common.edit')} onPress={onEdit} /> : null}
+            {canEdit ? <AppButton icon="create-outline" title={t('common.edit')} onPress={onEdit} variant="secondary" /> : null}
             {event.event_type === 'game' ? (
               <AppButton icon="list-outline" title={t('schedule.openGame')} onPress={onOpenGame} variant="secondary" />
             ) : event.practice_plan_id || canEdit ? (
               <AppButton icon="clipboard-outline" title={event.practice_plan_id ? t('schedule.openPlan') : t('schedule.createPlan')} onPress={onOpenPlan} variant="secondary" />
             ) : null}
           </View>
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
@@ -641,13 +655,14 @@ function escapeHtml(value: string) {
 
 const styles = StyleSheet.create({
   actionRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  calendarCard: { backgroundColor: colors.card, borderRadius: radii.lg, overflow: 'hidden' },
+  calendarCard: { ...shadows.subtle, backgroundColor: colors.card, borderRadius: radii.lg, overflow: 'hidden' },
   dateNavigation: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   declinedBadge: { backgroundColor: colors.dangerSoft, color: colors.goalRed },
   detailBackdrop: { backgroundColor: 'rgba(3,13,24,0.7)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   detailCard: { backgroundColor: colors.card, borderTopLeftRadius: radii.xxl, borderTopRightRadius: radii.xxl, gap: spacing.md, marginTop: 80, minHeight: '70%', padding: spacing.xl },
   detailHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
   detailHeaderCopy: { flex: 1 },
+  detailKeyboard: { flex: 1, justifyContent: 'flex-end' },
   detailRoot: { flex: 1, justifyContent: 'flex-end' },
   eventBlock: { borderLeftWidth: 5, borderRadius: radii.sm, gap: spacing.xs, padding: spacing.md },
   eventHeading: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
@@ -655,7 +670,7 @@ const styles = StyleSheet.create({
   eventTitle: { color: colors.textPrimary, flex: 1, fontWeight: '800' },
   eventTypeText: { color: colors.textPrimary, fontSize: 10, fontWeight: '900' },
   gameBlock: { backgroundColor: colors.dangerSoft, borderLeftColor: colors.goalRed },
-  gridCard: { backgroundColor: colors.card, borderRadius: radii.lg, overflow: 'hidden' },
+  gridCard: { ...shadows.subtle, backgroundColor: colors.card, borderRadius: radii.lg, overflow: 'hidden' },
   hourContent: { flex: 1, gap: spacing.xs, minHeight: 58, padding: spacing.xs },
   hourLabel: { color: colors.slateGrey, fontSize: 11, paddingTop: spacing.sm, textAlign: 'center', width: 58 },
   hourRow: { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', minHeight: 64 },
@@ -664,23 +679,24 @@ const styles = StyleSheet.create({
   noteCard: { backgroundColor: colors.cardPressed, borderRadius: radii.md, gap: spacing.xs, padding: spacing.md },
   periodLabel: { color: colors.iceWhite, flex: 1, fontWeight: '700', textAlign: 'center' },
   practiceBlock: { backgroundColor: colors.warningSoft, borderLeftColor: hornAmber },
-  recipientChip: { borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  recipientChipActive: { backgroundColor: colors.cardPressed, borderColor: colors.goalRed },
+  recipientChip: { borderColor: colors.border, borderRadius: radii.chip, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  recipientChipActive: { ...selectionStyles.active },
   recipientText: { color: colors.textPrimary, fontWeight: '700' },
   responseBox: { borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, gap: spacing.md, padding: spacing.md },
   sectionTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '800' },
   segment: { alignItems: 'center', borderRadius: radii.md, flex: 1, padding: spacing.control },
-  segmentActive: { backgroundColor: colors.goalRed },
+  segmentActive: { ...selectionStyles.active },
   segmentText: { color: colors.iceWhite, fontSize: 13, fontWeight: '800' },
   segmented: { backgroundColor: colors.rinkSurface, borderRadius: radii.md, flexDirection: 'row', padding: spacing.xs },
   staffCopy: { flex: 1 },
   staffFilter: { gap: spacing.sm },
   staffFilterLabel: { color: colors.iceWhite, fontSize: 13, fontWeight: '800' },
   staffFilterText: { color: colors.iceWhite, fontWeight: '700' },
+  selectedControlText: { ...selectionStyles.activeText },
   staffName: { color: colors.textPrimary, fontWeight: '700' },
   staffRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  statusBadge: { backgroundColor: colors.warningSoft, borderRadius: radii.pill, color: colors.textPrimary, fontSize: 12, fontWeight: '800', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  todayButton: { borderColor: colors.frostSteel, borderRadius: radii.pill, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  statusBadge: { backgroundColor: colors.warningSoft, borderRadius: radii.chip, color: colors.textPrimary, fontSize: 12, fontWeight: '800', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  todayButton: { borderColor: colors.frostSteel, borderRadius: radii.chip, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   todayText: { color: colors.iceWhite, fontWeight: '700' },
   weekDayHeader: { alignItems: 'center', borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, padding: spacing.sm, width: 104 },
   weekDayNumber: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
@@ -688,7 +704,7 @@ const styles = StyleSheet.create({
   weekEvent: { backgroundColor: colors.cardPressed, borderLeftWidth: 4, borderRadius: radii.xs, padding: spacing.xs },
   weekEventMeta: { color: colors.slateGrey, fontSize: 9 },
   weekEventText: { color: colors.textPrimary, fontSize: 11, fontWeight: '700' },
-  weekGrid: { backgroundColor: colors.card, borderRadius: radii.lg, minWidth: 786, overflow: 'hidden' },
+  weekGrid: { ...shadows.subtle, backgroundColor: colors.card, borderRadius: radii.lg, minWidth: 786, overflow: 'hidden' },
   weekHeaderRow: { flexDirection: 'row' },
   weekHourRow: { flexDirection: 'row', minHeight: 58 },
   weekSlot: { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, gap: 2, minHeight: 58, padding: 2, width: 104 },

@@ -14,11 +14,13 @@ import { useTranslation } from 'react-i18next';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
 import {
+  bevel,
   colors,
   fonts,
   iceWhite,
   radii,
   rinkNavy,
+  selectionStyles,
   spacing,
 } from '../theme/theme';
 import { AnimatedPressable } from './AnimatedPressable';
@@ -32,7 +34,14 @@ export function HeaderMenuButton() {
   const { activeTeam, role } = useActiveTeam();
   const [visible, setVisible] = useState(false);
 
-  function navigate(route: 'Dashboard' | 'DirectorAssistantCoaches' | 'DrillLibrary' | 'SchoolDrillLibrary') {
+  function navigate(
+    route:
+      | 'Dashboard'
+      | 'DirectorAssistantCoaches'
+      | 'DrillLibrary'
+      | 'SchoolDrillLibrary'
+      | 'GamePlan',
+  ) {
     setVisible(false);
     navigation.navigate(route);
   }
@@ -76,6 +85,13 @@ export function HeaderMenuButton() {
               label={t('appMenu.dashboard')}
               onPress={() => navigate('Dashboard')}
             />
+            {role !== 'super_admin' ? (
+              <MenuItem
+                icon="document-text-outline"
+                label={t('appMenu.gamePlan')}
+                onPress={() => navigate('GamePlan')}
+              />
+            ) : null}
             {role === 'director' ? (
               <MenuItem
                 icon="people-circle-outline"
@@ -94,6 +110,22 @@ export function HeaderMenuButton() {
         </SafeAreaView>
       </Modal>
     </>
+  );
+}
+
+export function HeaderSettingsButton() {
+  const { t } = useTranslation();
+  const navigation = useNavigation<Navigation>();
+
+  return (
+    <AnimatedPressable
+      accessibilityLabel={t('settings.openLabel')}
+      accessibilityRole="button"
+      onPress={() => navigation.navigate('Settings')}
+      style={styles.settingsButton}
+    >
+      <AppIcon color={iceWhite} name="settings-outline" size={23} />
+    </AnimatedPressable>
   );
 }
 
@@ -215,10 +247,19 @@ function TeamOption({
       style={[styles.teamOption, active && styles.teamOptionActive]}
     >
       <View style={styles.teamOptionCopy}>
-        <Text numberOfLines={1} style={styles.menuItemText}>{label}</Text>
-        {meta ? <Text style={styles.teamMeta}>{meta}</Text> : null}
+        <Text
+          numberOfLines={1}
+          style={[styles.menuItemText, active && styles.teamOptionTextActive]}
+        >
+          {label}
+        </Text>
+        {meta ? (
+          <Text style={[styles.teamMeta, active && styles.teamOptionTextActive]}>
+            {meta}
+          </Text>
+        ) : null}
       </View>
-      {active ? <AppIcon name="checkmark-circle" /> : null}
+      {active ? <AppIcon color={iceWhite} name="checkmark-circle" /> : null}
     </AnimatedPressable>
   );
 }
@@ -288,6 +329,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
   },
+  settingsButton: {
+    ...bevel.dark,
+    alignItems: 'center',
+    backgroundColor: colors.rinkSurface,
+    borderRadius: radii.pill,
+    height: 40,
+    justifyContent: 'center',
+    marginHorizontal: spacing.md,
+    width: 40,
+  },
   teamMeta: {
     color: colors.slateGrey,
     fontSize: 13,
@@ -303,11 +354,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   teamOptionActive: {
-    backgroundColor: colors.cardPressed,
-    borderColor: colors.goalRed,
+    ...selectionStyles.active,
   },
   teamOptionCopy: {
     flex: 1,
+  },
+  teamOptionTextActive: {
+    ...selectionStyles.activeText,
   },
   teamTrigger: {
     alignItems: 'center',

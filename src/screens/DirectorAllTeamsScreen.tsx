@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery } from '@tanstack/react-query';
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -128,6 +129,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
               icon="add-circle-outline"
               title={t('teamForm.addFirstButton')}
               onPress={() => navigation.navigate('TeamForm')}
+              variant="secondary"
             />
           }
           description={t('directorAllTeams.emptyDescription')}
@@ -137,7 +139,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
       ) : null}
       <View style={appScreenStyles.list}>
         {(teamsQuery.data ?? []).map((team) => (
-          <View key={team.id} style={appScreenStyles.card}>
+          <Card key={team.id} style={appScreenStyles.card}>
             <Text style={appScreenStyles.cardTitle}>{team.name}</Text>
             <Text style={appScreenStyles.meta}>
               {t('directorAllTeams.teamMeta', {
@@ -152,6 +154,7 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
                 setActiveTeam(team);
                 navigation.navigate('MainTabs', { screen: 'RosterTab' });
               }}
+              variant="secondary"
             />
             <AppButton
               icon="calendar-outline"
@@ -160,8 +163,9 @@ export function DirectorAllTeamsScreen({ navigation }: Props) {
                 setActiveTeam(team);
                 navigation.navigate('MainTabs', { screen: 'ScheduleTab' });
               }}
+              variant="secondary"
             />
-          </View>
+          </Card>
         ))}
       </View>
     </AppScreen>

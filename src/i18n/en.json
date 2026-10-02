@@ -220,7 +220,8 @@
     "openLabel": "Open main menu",
     "dashboard": "Dashboard",
     "coachManager": "Coach Manager",
-    "drillLibrary": "Drill Library"
+    "drillLibrary": "Drill Library",
+    "gamePlan": "Game Plan"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -232,6 +233,8 @@
     "rosterCount": "{{count}} players",
     "todayTitle": "Today",
     "noEventsToday": "No games or practices today.",
+    "upcomingEventsTitle": "Your next 3 events",
+    "noUpcomingEvents": "No upcoming games or practices are scheduled.",
     "gamesThisWeek": "Games in the next seven days",
     "unavailableTitle": "Injured and suspended players",
     "everyoneAvailable": "No players are marked injured or suspended.",
@@ -415,7 +418,8 @@
       "straight": "Straight",
       "curved": "Curved",
       "backward": "Backward",
-      "freehand": "Freehand"
+      "freehand": "Freehand",
+      "freehand_backward": "Freehand backward (hashed)"
     },
     "pathStyles": {
       "straight": "Straight",
@@ -442,7 +446,12 @@
     "confirmTextButton": "Place Text",
     "shadedZoneHint": "Tap the rink to add zone points, then close the shape.",
     "shadedZoneDoneButton": "Close Zone",
-    "shadedZoneClearButton": "Clear Points"
+    "shadedZoneClearButton": "Clear Points",
+    "canvasScrollHint": "Use the scroll rail beside the rink to move down without drawing.",
+    "scrollRailLabel": "SCROLL",
+    "fullscreenButton": "Fullscreen Rink",
+    "zoomOutButton": "Zoom out",
+    "zoomInButton": "Zoom in"
   },
   "settings": {
     "title": "Settings",
@@ -658,7 +667,14 @@
     "noActiveTeamTitle": "No active team selected",
     "noActiveTeamDescription": "Choose a team before opening its roster.",
     "jerseyNumber": "#{{number}}",
-    "noJerseyNumber": "#--"
+    "noJerseyNumber": "#--",
+    "viewDetails": "View details",
+    "openPlayerDetailsAccessibility": "Open details for {{name}}, jersey {{number}}, {{status}}",
+    "positionGroups": {
+      "F": "Forwards",
+      "D": "Defence",
+      "G": "Goalies"
+    }
   },
   "playerForm": {
     "addHeaderTitle": "Add Player",
@@ -827,6 +843,80 @@
     "saveButton": "Save Game",
     "saving": "Saving..."
   },
+  "gamePlan": {
+    "headerTitle": "Game Plan",
+    "title": "Game Plan",
+    "description": "Prepare and print the coaching sheet for {{teamName}}.",
+    "noActiveTeamDescription": "Select a team from the header before opening its game plan.",
+    "noGamesTitle": "No games available",
+    "noGamesDescription": "Create a game before preparing a printable game plan.",
+    "loadError": "Unable to load this team's games.",
+    "gamePickerLabel": "Game",
+    "selectGamePlaceholder": "Select a game",
+    "gameOption": "{{date}} - vs {{opponent}}",
+    "vsOpponent": "VS {{opponent}}",
+    "tacticalTitle": "Tactical notes",
+    "fields": {
+      "dZonePlay": {
+        "label": "D-zone play",
+        "placeholder": "Defensive-zone structure, exits, and responsibilities"
+      },
+      "forecheck": {
+        "label": "Forecheck",
+        "placeholder": "Forecheck system, triggers, and pressure assignments"
+      },
+      "oZonePlay": {
+        "label": "O-zone play",
+        "placeholder": "Offensive-zone entries, possession, and scoring habits"
+      },
+      "ppNotes": {
+        "label": "Power play (PP)",
+        "placeholder": "Power-play setup, entries, and key options"
+      },
+      "pkNotes": {
+        "label": "Penalty kill (PK)",
+        "placeholder": "Penalty-kill shape, pressure, and clears"
+      }
+    },
+    "keyPointsTitle": "Key points",
+    "keyPointLabel": "Key point {{number}}",
+    "keyPointPlaceholder": "One clear bench reminder",
+    "outPlayersLabel": "Out players",
+    "outPlayersPlaceholder": "Scratched, injured, suspended, or unavailable players",
+    "saveButton": "Save Game Plan",
+    "saveSuccess": "Game plan saved.",
+    "saveError": "Unable to save the game plan.",
+    "exportButton": "Export Coaching Sheet",
+    "exporting": "Building PDF...",
+    "exportError": "Unable to export the coaching sheet.",
+    "exportUnavailable": "Sharing is not available on this device.",
+    "recordShort": "{{wins}}-{{losses}}-{{ties}}",
+    "gameNumberShort": "GAME {{number}}",
+    "pdf": {
+      "gamePlan": "Game Plan",
+      "vs": "VS",
+      "dZonePlay": "D-ZONE PLAY",
+      "forecheck": "FORECHECK",
+      "oZonePlay": "O-ZONE PLAY",
+      "pp": "PP",
+      "pk": "PK",
+      "keyPoints": "KEY POINTS",
+      "out": "OUT",
+      "left": "LEFT",
+      "center": "CENTER",
+      "right": "RIGHT",
+      "goalies": "G",
+      "starter": "STARTER",
+      "defensePair": "D{{number}}",
+      "forwardLine": "F{{number}}",
+      "specialTeams": "Special Teams",
+      "ld": "LD",
+      "rd": "RD",
+      "lw": "LW",
+      "c": "C",
+      "rw": "RW"
+    }
+  },
   "practiceDetail": {
     "addHeaderTitle": "Add Practice",
     "editHeaderTitle": "Edit Practice",
@@ -855,6 +945,14 @@
     "linkDrillButton": "Link Drill",
     "changeDrillButton": "Change Drill",
     "clearDrillButton": "Clear Drill",
+    "addConcurrentDrillButton": "Add Concurrent Drill",
+    "changeConcurrentDrillButton": "Change Concurrent Drill",
+    "clearConcurrentDrillButton": "Clear Concurrent Drill",
+    "concurrentDrillLabel": "Runs concurrently",
+    "concurrentNotesLabel": "Concurrent drill notes",
+    "concurrentNotesPlaceholder": "Add instructions specific to the concurrent drill",
+    "primaryDrillPickerTitle": "Choose the main drill",
+    "concurrentDrillPickerTitle": "Choose the concurrent drill",
     "teamDrillsTitle": "Team drills",
     "schoolDrillsTitle": "School library",
     "emptyTeamDrills": "No team drills yet.",
@@ -888,6 +986,8 @@
     "exportError": "Unable to export the practice plan. Please try again.",
     "exportUnavailable": "Sharing is not available on this device.",
     "exportTitle": "Practice Plan",
+    "exportTitleForTeam": "Practice Plan — {{teamName}}",
+    "concurrentDrillPdfLabel": "Concurrent: {{name}}",
     "exportSegmentTitle": "{{number}}. {{title}}",
     "exportLinkedDrill": "{{name}} / {{source}}",
     "exportNoNotes": "No notes entered."

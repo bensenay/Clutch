@@ -1,4 +1,5 @@
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Card } from './Card';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -252,7 +253,7 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
   }
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('assistantSchedule.title')}
       </Text>
@@ -359,6 +360,7 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
                       coach_note: coachNote.trim() || null,
                     })
                   }
+                  variant="secondary"
                 />
                 {hasMatch ? (
                   <AppButton
@@ -373,19 +375,21 @@ export function AssistantAssignmentSchedule({ navigation, userId }: Props) {
                         : t('assistantSchedule.openPracticeButton')
                     }
                     onPress={() => openAssignment(assignment)}
+                    variant="secondary"
                   />
                 ) : null}
                 <AppButton
                   icon="people-outline"
                   title={t('assistantSchedule.openRosterButton')}
                   onPress={() => openRoster(assignment)}
+                  variant="secondary"
                 />
               </View>
             </View>
           );
         })}
       </View>
-    </View>
+    </Card>
   );
 }
 

@@ -1,5 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,16 +13,19 @@ import {
   fonts,
   goalRed,
   radii,
+  shadows,
   slateGrey,
   spacing,
 } from '../theme/theme';
 import { RinkWatermark } from './RinkWatermark';
+import { KeyboardDismissAccessory } from './KeyboardDismissAccessory';
 
 type AppScreenProps = PropsWithChildren<{
   title: string;
   description?: string;
   action?: ReactNode;
   background?: ReactNode;
+  contentMaxWidth?: number;
 }>;
 
 export function AppScreen({
@@ -29,44 +34,61 @@ export function AppScreen({
   action,
   background,
   children,
+  contentMaxWidth,
 }: AppScreenProps) {
   const { t } = useTranslation();
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.flex}
     >
       <View pointerEvents="none" style={styles.background}>
         {background ?? <RinkWatermark />}
       </View>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>{t('common.brand')}</Text>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.headerRule} />
-        {description ? (
-          <Text style={styles.description}>{description}</Text>
-        ) : null}
-        {action}
-      </View>
-      <View style={styles.content}>{children}</View>
-    </ScrollView>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        contentContainerStyle={styles.container}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View
+          style={[
+            styles.header,
+            contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
+          ]}
+        >
+          <Text style={styles.eyebrow}>{t('common.brand')}</Text>
+          <Text style={styles.title}>{title}</Text>
+          <View style={styles.headerRule} />
+          {description ? (
+            <Text style={styles.description}>{description}</Text>
+          ) : null}
+          {action}
+        </View>
+        <View
+          style={[
+            styles.content,
+            contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
+          ]}
+        >
+          {children}
+        </View>
+      </ScrollView>
+      <KeyboardDismissAccessory />
+    </KeyboardAvoidingView>
   );
 }
 
 export const appScreenStyles = StyleSheet.create({
   card: {
+    ...shadows.subtle,
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.lg,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.lg,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
   },
   cardDescription: {
     color: slateGrey,
@@ -104,6 +126,10 @@ export const appScreenStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  flex: {
+    backgroundColor: colors.rinkNavy,
+    flex: 1,
+  },
   background: {
     bottom: 0,
     left: 0,
@@ -112,7 +138,6 @@ const styles = StyleSheet.create({
     top: 0,
   },
   container: {
-    backgroundColor: colors.rinkNavy,
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxl,

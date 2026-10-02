@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radii, slateGrey, spacing } from '../theme/theme';
+import { bevel, colors, radii, slateGrey, spacing } from '../theme/theme';
 import { AnimatedPressable } from './AnimatedPressable';
 import { AppIcon, type AppIconName } from './AppIcon';
 
@@ -21,11 +21,12 @@ export function ChoiceButton({
       accessibilityRole="button"
       onPress={onPress}
       style={styles.button}
+      surface
     >
       <View style={styles.header}>
         {icon ? (
           <View style={styles.iconBadge}>
-            <AppIcon color={colors.goalRed} name={icon} size={20} />
+            <AppIcon color={colors.textPrimary} name={icon} size={20} />
           </View>
         ) : null}
         <Text style={styles.title}>{title}</Text>
@@ -37,10 +38,9 @@ export function ChoiceButton({
 
 const styles = StyleSheet.create({
   button: {
+    ...bevel.light,
     backgroundColor: colors.card,
-    borderColor: colors.border,
     borderRadius: radii.md,
-    borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.lg,
   },
@@ -61,8 +61,8 @@ const styles = StyleSheet.create({
   },
   iconBadge: {
     alignItems: 'center',
-    backgroundColor: colors.dangerSoft,
-    borderRadius: radii.pill,
+    backgroundColor: colors.cardPressed,
+    borderRadius: radii.sm,
     height: 34,
     justifyContent: 'center',
     width: 34,

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Card } from './Card';
 import { useTranslation } from 'react-i18next';
 import {
   type ActiveTeam,
@@ -20,7 +21,7 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
   }
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('teamSwitcher.title')}
       </Text>
@@ -55,7 +56,7 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
           );
         })}
       </View>
-    </View>
+    </Card>
   );
 }
 

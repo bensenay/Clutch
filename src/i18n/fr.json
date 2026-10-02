@@ -220,7 +220,8 @@
     "openLabel": "Ouvrir le menu principal",
     "dashboard": "Tableau de bord",
     "coachManager": "Gestion des entraîneurs",
-    "drillLibrary": "Bibliothèque d'exercices"
+    "drillLibrary": "Bibliothèque d'exercices",
+    "gamePlan": "Plan de match"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -232,6 +233,8 @@
     "rosterCount": "{{count}} joueurs",
     "todayTitle": "Aujourd'hui",
     "noEventsToday": "Aucun match ni entraînement aujourd'hui.",
+    "upcomingEventsTitle": "Vos 3 prochains événements",
+    "noUpcomingEvents": "Aucun match ni entraînement à venir n'est prévu.",
     "gamesThisWeek": "Matchs des sept prochains jours",
     "unavailableTitle": "Joueurs blessés et suspendus",
     "everyoneAvailable": "Aucun joueur n'est marqué blessé ou suspendu.",
@@ -415,7 +418,8 @@
       "straight": "Droit",
       "curved": "Courbé",
       "backward": "À reculons",
-      "freehand": "Main levée"
+      "freehand": "Main levée",
+      "freehand_backward": "Reculons à main levée (hachuré)"
     },
     "pathStyles": {
       "straight": "Droit",
@@ -442,7 +446,12 @@
     "confirmTextButton": "Placer le texte",
     "shadedZoneHint": "Touchez la patinoire pour ajouter des points, puis fermez la forme.",
     "shadedZoneDoneButton": "Fermer la zone",
-    "shadedZoneClearButton": "Effacer les points"
+    "shadedZoneClearButton": "Effacer les points",
+    "canvasScrollHint": "Utilisez la barre à côté de la patinoire pour défiler sans dessiner.",
+    "scrollRailLabel": "DÉFILER",
+    "fullscreenButton": "Patinoire plein écran",
+    "zoomOutButton": "Réduire le zoom",
+    "zoomInButton": "Agrandir le zoom"
   },
   "settings": {
     "title": "Paramètres",
@@ -658,7 +667,14 @@
     "noActiveTeamTitle": "Aucune équipe active sélectionnée",
     "noActiveTeamDescription": "Choisissez une équipe avant d'ouvrir son effectif.",
     "jerseyNumber": "No {{number}}",
-    "noJerseyNumber": "No --"
+    "noJerseyNumber": "No --",
+    "viewDetails": "Voir les détails",
+    "openPlayerDetailsAccessibility": "Ouvrir les détails de {{name}}, chandail {{number}}, {{status}}",
+    "positionGroups": {
+      "F": "Attaquants",
+      "D": "Défenseurs",
+      "G": "Gardiens"
+    }
   },
   "playerForm": {
     "addHeaderTitle": "Ajouter un joueur",
@@ -827,6 +843,80 @@
     "saveButton": "Enregistrer le match",
     "saving": "Enregistrement..."
   },
+  "gamePlan": {
+    "headerTitle": "Plan de match",
+    "title": "Plan de match",
+    "description": "Préparez et imprimez la feuille des entraîneurs pour {{teamName}}.",
+    "noActiveTeamDescription": "Sélectionnez une équipe dans l'en-tête avant d'ouvrir son plan de match.",
+    "noGamesTitle": "Aucun match disponible",
+    "noGamesDescription": "Créez un match avant de préparer un plan de match imprimable.",
+    "loadError": "Impossible de charger les matchs de cette équipe.",
+    "gamePickerLabel": "Match",
+    "selectGamePlaceholder": "Sélectionner un match",
+    "gameOption": "{{date}} - vs {{opponent}}",
+    "vsOpponent": "VS {{opponent}}",
+    "tacticalTitle": "Notes tactiques",
+    "fields": {
+      "dZonePlay": {
+        "label": "Jeu en zone défensive",
+        "placeholder": "Structure en zone défensive, sorties et responsabilités"
+      },
+      "forecheck": {
+        "label": "Échec avant",
+        "placeholder": "Système d'échec avant, déclencheurs et responsabilités"
+      },
+      "oZonePlay": {
+        "label": "Jeu en zone offensive",
+        "placeholder": "Entrées de zone, possession et habitudes offensives"
+      },
+      "ppNotes": {
+        "label": "Avantage numérique (AN)",
+        "placeholder": "Structure, entrées de zone et options en avantage numérique"
+      },
+      "pkNotes": {
+        "label": "Désavantage numérique (DN)",
+        "placeholder": "Structure, pression et dégagements en désavantage numérique"
+      }
+    },
+    "keyPointsTitle": "Points clés",
+    "keyPointLabel": "Point clé {{number}}",
+    "keyPointPlaceholder": "Un rappel clair pour le banc",
+    "outPlayersLabel": "Joueurs absents",
+    "outPlayersPlaceholder": "Joueurs retranchés, blessés, suspendus ou indisponibles",
+    "saveButton": "Enregistrer le plan de match",
+    "saveSuccess": "Plan de match enregistré.",
+    "saveError": "Impossible d'enregistrer le plan de match.",
+    "exportButton": "Exporter la feuille des entraîneurs",
+    "exporting": "Création du PDF...",
+    "exportError": "Impossible d'exporter la feuille des entraîneurs.",
+    "exportUnavailable": "Le partage n'est pas disponible sur cet appareil.",
+    "recordShort": "{{wins}}-{{losses}}-{{ties}}",
+    "gameNumberShort": "MATCH {{number}}",
+    "pdf": {
+      "gamePlan": "Plan de match",
+      "vs": "VS",
+      "dZonePlay": "ZONE D",
+      "forecheck": "ÉCHEC AVANT",
+      "oZonePlay": "ZONE O",
+      "pp": "AN",
+      "pk": "DN",
+      "keyPoints": "POINTS CLÉS",
+      "out": "ABSENTS",
+      "left": "GAUCHE",
+      "center": "CENTRE",
+      "right": "DROITE",
+      "goalies": "G",
+      "starter": "PARTANT",
+      "defensePair": "D{{number}}",
+      "forwardLine": "A{{number}}",
+      "specialTeams": "Unités spéciales",
+      "ld": "DG",
+      "rd": "DD",
+      "lw": "AG",
+      "c": "C",
+      "rw": "AD"
+    }
+  },
   "practiceDetail": {
     "addHeaderTitle": "Ajouter un entraînement",
     "editHeaderTitle": "Modifier l'entraînement",
@@ -855,6 +945,14 @@
     "linkDrillButton": "Lier un exercice",
     "changeDrillButton": "Changer l'exercice",
     "clearDrillButton": "Retirer l'exercice",
+    "addConcurrentDrillButton": "Ajouter un exercice simultané",
+    "changeConcurrentDrillButton": "Changer l'exercice simultané",
+    "clearConcurrentDrillButton": "Retirer l'exercice simultané",
+    "concurrentDrillLabel": "Exécuté simultanément",
+    "concurrentNotesLabel": "Notes de l'exercice simultané",
+    "concurrentNotesPlaceholder": "Ajouter des consignes propres à l'exercice simultané",
+    "primaryDrillPickerTitle": "Choisir l'exercice principal",
+    "concurrentDrillPickerTitle": "Choisir l'exercice simultané",
     "teamDrillsTitle": "Exercices d'équipe",
     "schoolDrillsTitle": "Bibliothèque de l'école",
     "emptyTeamDrills": "Aucun exercice d'équipe pour le moment.",
@@ -888,6 +986,8 @@
     "exportError": "Impossible d'exporter le plan d'entraînement. Veuillez réessayer.",
     "exportUnavailable": "Le partage n'est pas disponible sur cet appareil.",
     "exportTitle": "Plan d'entraînement",
+    "exportTitleForTeam": "Plan d'entraînement — {{teamName}}",
+    "concurrentDrillPdfLabel": "Simultané : {{name}}",
     "exportSegmentTitle": "{{number}}. {{title}}",
     "exportLinkedDrill": "{{name}} / {{source}}",
     "exportNoNotes": "Aucune note saisie."

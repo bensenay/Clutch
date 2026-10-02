@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Card } from '../components/Card';
 import { useState } from 'react';
 import { Alert, Button, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -171,14 +172,14 @@ export function DirectorOrganizationSettingsSection({
     }
 
     return (
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('directorOnly.title')}
         </Text>
         <Text style={appScreenStyles.cardDescription}>
           {t('directorOnly.description')}
         </Text>
-      </View>
+      </Card>
     );
   }
 
@@ -193,7 +194,7 @@ export function DirectorOrganizationSettingsSection({
         </Text>
       ) : null}
       {schoolQuery.data ? (
-        <View style={appScreenStyles.card}>
+        <Card style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>
             {t('directorSettings.joinCodeTitle')}
           </Text>
@@ -219,7 +220,7 @@ export function DirectorOrganizationSettingsSection({
             }
             onPress={confirmRegenerate}
           />
-        </View>
+        </Card>
       ) : null}
     </>
   );

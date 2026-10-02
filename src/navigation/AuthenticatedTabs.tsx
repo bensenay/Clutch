@@ -1,35 +1,28 @@
+import { SteelBar } from '../components/SteelBar';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { AnimatedPressable } from '../components/AnimatedPressable';
 import { AppIcon } from '../components/AppIcon';
-import { HeaderMenuButton, HeaderTeamSelector } from '../components/AppHeader';
+import {
+  HeaderMenuButton,
+  HeaderSettingsButton,
+  HeaderTeamSelector,
+} from '../components/AppHeader';
 import { PracticesScreen } from '../screens/PracticesScreen';
 import { RosterScreen } from '../screens/RosterScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import {
-  colors,
   fonts,
   frostSteel,
   iceWhite,
   rinkNavy,
-  spacing,
 } from '../theme/theme';
 import type {
-  AuthenticatedStackParamList,
   AuthenticatedTabParamList,
 } from './types';
 
 const Tab = createBottomTabNavigator<AuthenticatedTabParamList>();
 
-type AuthenticatedTabsProps = {
-  navigation: NativeStackNavigationProp<
-    AuthenticatedStackParamList,
-    'MainTabs'
-  >;
-};
-
-export function AuthenticatedTabs({ navigation }: AuthenticatedTabsProps) {
+export function AuthenticatedTabs() {
   const { t } = useTranslation();
 
   return (
@@ -37,25 +30,18 @@ export function AuthenticatedTabs({ navigation }: AuthenticatedTabsProps) {
       screenOptions={{
         headerLeft: () => <HeaderMenuButton />,
         headerTitle: () => <HeaderTeamSelector />,
-        headerRight: () => (
-          <AnimatedPressable
-            accessibilityLabel={t('settings.openLabel')}
-            accessibilityRole="button"
-            onPress={() => navigation.navigate('Settings')}
-            style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}
-          >
-            <AppIcon color={iceWhite} name="settings-outline" size={23} />
-          </AnimatedPressable>
-        ),
+        headerRight: () => <HeaderSettingsButton />,
         headerShadowVisible: false,
+        headerBackground: () => <SteelBar />,
         headerStyle: { backgroundColor: rinkNavy },
         headerTintColor: iceWhite,
         headerTitleStyle: { fontFamily: fonts.display },
         tabBarActiveTintColor: iceWhite,
         tabBarInactiveTintColor: frostSteel,
+        tabBarBackground: () => <SteelBar edge="top" />,
         tabBarStyle: {
           backgroundColor: rinkNavy,
-          borderTopColor: colors.rinkSurface,
+          borderTopWidth: 0,
         },
       }}
     >

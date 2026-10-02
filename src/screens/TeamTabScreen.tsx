@@ -1,9 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../auth/AuthProvider';
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
@@ -11,7 +13,7 @@ import { EmptyState } from '../components/EmptyState';
 import { LoadingState } from '../components/LoadingState';
 import { RinkWatermark } from '../components/RinkWatermark';
 import type { AuthenticatedStackParamList } from '../navigation/types';
-import { addDays, endOfDay, formatTime, startOfDay } from '../schedule/dates';
+import { addDays, endOfDay, formatDate, formatTime, startOfDay } from '../schedule/dates';
 import type { EventStaffAssignment, ScheduleEvent } from '../schedule/types';
 import { useActiveTeam, type ActiveTeam } from '../teams/ActiveTeamContext';
 import { colors, radii, spacing } from '../theme/theme';
@@ -29,6 +31,7 @@ type DashboardPlayer = {
 
 export function TeamTabScreen({ navigation }: Props) {
   const { i18n, t } = useTranslation();
+  const { session } = useAuth();
   const { activeTeam, isLoadingTeams, role, setActiveTeam, teams, teamsError } = useActiveTeam();
   const dashboardTeams = role === 'director' ? teams : activeTeam ? [activeTeam] : [];
   const teamIds = dashboardTeams.map((team) => team.id);
@@ -65,7 +68,39 @@ export function TeamTabScreen({ navigation }: Props) {
     },
     enabled: teamIds.length > 0,
   });
-  const eventIds = (eventsQuery.data ?? []).map((event) => event.id);
+  const showCoachUpcomingEvents = role === 'coach' && Boolean(session);
+  const upcomingEventsQuery = useQuery({
+    queryKey: ['dashboard', 'coach-upcoming-events', session?.user.id],
+    queryFn: async () => {
+      if (!session) return [] as ScheduleEvent[];
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('event_staff_assignments')
+        .select('event_id')
+        .eq('coach_user_id', session.user.id);
+      if (assignmentsError) throw assignmentsError;
+      const assignedEventIds = Array.from(
+        new Set((assignments ?? []).map((assignment) => assignment.event_id)),
+      );
+      if (assignedEventIds.length === 0) return [] as ScheduleEvent[];
+      const { data, error } = await supabase
+        .from('schedule_events')
+        .select('*')
+        .in('id', assignedEventIds)
+        .gte('starts_at', new Date().toISOString())
+        .order('starts_at')
+        .limit(3);
+      if (error) throw error;
+      return (data ?? []) as ScheduleEvent[];
+    },
+    enabled: showCoachUpcomingEvents,
+  });
+  const upcomingEvents = upcomingEventsQuery.data ?? [];
+  const eventIds = Array.from(
+    new Set([
+      ...(eventsQuery.data ?? []).map((event) => event.id),
+      ...upcomingEvents.map((event) => event.id),
+    ]),
+  );
   const staffQuery = useQuery({
     queryKey: ['dashboard', 'staff', eventIds.join(',')],
     queryFn: async () => {
@@ -96,9 +131,9 @@ export function TeamTabScreen({ navigation }: Props) {
     navigation.navigate('PlayerForm', { playerId: player.id, readOnly: team?.membership_role === 'assistant_coach' });
   }
 
-  const isLoading = isLoadingTeams || playersQuery.isLoading || eventsQuery.isLoading || staffQuery.isLoading;
-  const hasError = teamsError || Boolean(playersQuery.error || eventsQuery.error || staffQuery.error);
-  const watermarkLogoUrl = dashboardTeams.length === 1 ? dashboardTeams[0].logo_url : null;
+  const isLoading = isLoadingTeams || playersQuery.isLoading || eventsQuery.isLoading || upcomingEventsQuery.isLoading || staffQuery.isLoading;
+  const hasError = teamsError || Boolean(playersQuery.error || eventsQuery.error || upcomingEventsQuery.error || staffQuery.error);
+  const watermarkLogoUrl = activeTeam?.logo_url ?? null;
 
   return (
     <AppScreen
@@ -110,13 +145,33 @@ export function TeamTabScreen({ navigation }: Props) {
       {isLoading ? <LoadingState /> : null}
       {hasError ? <Text style={appScreenStyles.error}>{t('dashboard.loadError')}</Text> : null}
       {role === 'super_admin' ? (
-        <View style={appScreenStyles.card}>
+        <Card style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>{t('home.superAdminTitle')}</Text>
           <Text style={appScreenStyles.cardDescription}>{t('home.superAdminDescription')}</Text>
-          <AppButton icon="shield-checkmark-outline" title={t('superAdmin.openButton')} onPress={() => navigation.navigate('SuperAdmin')} />
-        </View>
+          <AppButton icon="shield-checkmark-outline" title={t('superAdmin.openButton')} onPress={() => navigation.navigate('SuperAdmin')} variant="secondary" />
+        </Card>
       ) : null}
       {!isLoading && role !== 'super_admin' && dashboardTeams.length === 0 ? <EmptyState icon="shield-outline" title={t('dashboard.noTeamTitle')} description={t('dashboard.noTeamDescription')} /> : null}
+      {showCoachUpcomingEvents ? (
+        <Card style={appScreenStyles.card}>
+          <Text style={appScreenStyles.cardTitle}>{t('dashboard.upcomingEventsTitle')}</Text>
+          {upcomingEvents.length === 0 && !upcomingEventsQuery.isLoading ? (
+            <Text style={appScreenStyles.note}>{t('dashboard.noUpcomingEvents')}</Text>
+          ) : (
+            upcomingEvents.map((event) => (
+              <DashboardEvent
+                event={event}
+                key={`upcoming-${event.id}`}
+                locale={i18n.language}
+                showDate
+                staff={staffByEvent.get(event.id) ?? []}
+                teamName={teams.find((team) => team.id === event.team_id)?.name}
+                onPress={() => openEvent(event)}
+              />
+            ))
+          )}
+        </Card>
+      ) : null}
       {dashboardTeams.map((team) => (
         <TeamSummary
           events={events.filter((event) => event.team_id === team.id)}
@@ -153,7 +208,7 @@ function TeamSummary({ team, players, events, staffByEvent, locale, onOpenEvent,
   const unavailable = players.filter((player) => player.status !== 'active');
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <View style={appScreenStyles.row}>
         <View style={styles.teamCopy}>
           <Text style={styles.teamName}>{team.name}</Text>
@@ -174,17 +229,21 @@ function TeamSummary({ team, players, events, staffByEvent, locale, onOpenEvent,
           <Text style={styles.statusBadge}>{t(`playerForm.statuses.${player.status}`)}</Text>
         </AnimatedPressable>
       ))}
-    </View>
+    </Card>
   );
 }
 
-function DashboardEvent({ event, staff, locale, onPress }: { event: ScheduleEvent; staff: EventStaffAssignment[]; locale: string; onPress: () => void }) {
+function DashboardEvent({ event, staff, locale, showDate = false, teamName, onPress }: { event: ScheduleEvent; staff: EventStaffAssignment[]; locale: string; showDate?: boolean; teamName?: string; onPress: () => void }) {
   const { t } = useTranslation();
   return (
     <AnimatedPressable accessibilityRole="button" onPress={onPress} style={styles.eventRow}>
-      <View style={styles.eventTime}><Text style={styles.eventTimeText}>{formatTime(event.starts_at, locale)}</Text></View>
+      <View style={[styles.eventTime, showDate && styles.eventDateTime]}>
+        {showDate ? <Text style={styles.eventDateText}>{formatDate(event.starts_at, locale)}</Text> : null}
+        <Text style={styles.eventTimeText}>{formatTime(event.starts_at, locale)}</Text>
+      </View>
       <View style={styles.teamCopy}>
         <Text style={styles.playerName}>{event.title}</Text>
+        {teamName ? <Text style={styles.eventTeamName}>{teamName}</Text> : null}
         <Text style={appScreenStyles.meta}>{t(`schedule.eventTypes.${event.event_type}`)} • {event.location || t('calendar.noLocation')}</Text>
         {event.event_type === 'practice' ? (
           <Text style={appScreenStyles.meta}>
@@ -200,15 +259,18 @@ function DashboardEvent({ event, staff, locale, onPress }: { event: ScheduleEven
 }
 
 const styles = StyleSheet.create({
-  countBadge: { backgroundColor: colors.cardPressed, borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  countBadge: { backgroundColor: colors.cardPressed, borderRadius: radii.chip, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   countText: { color: colors.textPrimary, fontSize: 12, fontWeight: '800' },
   eventRow: { alignItems: 'flex-start', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
+  eventDateText: { color: colors.iceWhite, fontSize: 11, fontWeight: '700' },
+  eventDateTime: { minWidth: 112 },
+  eventTeamName: { color: colors.goalRed, fontSize: 12, fontWeight: '800' },
   eventTime: { backgroundColor: colors.rinkNavy, borderRadius: radii.sm, padding: spacing.sm },
   eventTimeText: { color: colors.iceWhite, fontSize: 12, fontWeight: '800' },
   playerName: { color: colors.textPrimary, fontWeight: '800' },
   playerRow: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
   sectionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900', marginTop: spacing.sm },
-  statusBadge: { backgroundColor: colors.dangerSoft, borderRadius: radii.pill, color: colors.goalRed, fontSize: 11, fontWeight: '900', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  statusBadge: { backgroundColor: colors.dangerSoft, borderRadius: radii.chip, color: colors.goalRed, fontSize: 11, fontWeight: '900', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   teamCopy: { flex: 1 },
   teamName: { color: colors.textPrimary, fontSize: 21, fontWeight: '900' },
 });

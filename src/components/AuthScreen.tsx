@@ -2,6 +2,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +21,10 @@ import {
   spacing,
 } from '../theme/theme';
 import { RinkWatermark } from './RinkWatermark';
+import {
+  KEYBOARD_DISMISS_ACCESSORY_ID,
+  KeyboardDismissAccessory,
+} from './KeyboardDismissAccessory';
 
 type AuthScreenProps = PropsWithChildren<{
   title: string;
@@ -37,12 +42,14 @@ export function AuthScreen({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.flex}
     >
       <RinkWatermark />
       <ScrollView
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         contentContainerStyle={styles.container}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
@@ -55,6 +62,7 @@ export function AuthScreen({
           {footer}
         </View>
       </ScrollView>
+      <KeyboardDismissAccessory />
     </KeyboardAvoidingView>
   );
 }
@@ -63,13 +71,31 @@ type FormFieldProps = TextInputProps & {
   label: string;
 };
 
-export function FormField({ label, style, ...props }: FormFieldProps) {
+export function FormField({
+  label,
+  multiline = false,
+  onSubmitEditing,
+  style,
+  ...props
+}: FormFieldProps) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         autoCapitalize="none"
+        blurOnSubmit={!multiline}
+        inputAccessoryViewID={
+          Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined
+        }
+        multiline={multiline}
+        onSubmitEditing={(event) => {
+          if (!multiline) {
+            Keyboard.dismiss();
+          }
+          onSubmitEditing?.(event);
+        }}
         placeholderTextColor={slateGrey}
+        returnKeyType={multiline ? 'default' : 'done'}
         style={[styles.input, style]}
         {...props}
       />

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Card } from '../components/Card';
 import { Button, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
@@ -175,7 +176,7 @@ export function CompleteCoachOnboardingScreen({
         </View>
       ) : null}
       {mode === 'join' ? (
-        <View style={appScreenStyles.card}>
+        <Card style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>
             {t('completeCoachOnboarding.joinTitle')}
           </Text>
@@ -245,10 +246,10 @@ export function CompleteCoachOnboardingScreen({
             title={t('common.back')}
             onPress={resetChoice}
           />
-        </View>
+        </Card>
       ) : null}
       {mode === 'independent' ? (
-        <View style={appScreenStyles.card}>
+        <Card style={appScreenStyles.card}>
           <Text style={appScreenStyles.cardTitle}>
             {t('completeCoachOnboarding.independentTitle')}
           </Text>
@@ -279,7 +280,7 @@ export function CompleteCoachOnboardingScreen({
             title={t('common.back')}
             onPress={resetChoice}
           />
-        </View>
+        </Card>
       ) : null}
     </AppScreen>
   );

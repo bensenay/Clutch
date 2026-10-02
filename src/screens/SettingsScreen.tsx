@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
@@ -162,7 +163,7 @@ export function SettingsScreen(_props: Props) {
       <TeamJoinCodeSection />
       <JoinAnotherTeamSection />
       <TeamBrandingSection />
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('settings.languageTitle')}
         </Text>
@@ -177,11 +178,12 @@ export function SettingsScreen(_props: Props) {
           onPress={() => void setLanguage(nextLanguage)}
           variant="secondary"
         />
-      </View>
+      </Card>
       <AppButton
         icon="log-out-outline"
         title={t('common.signOut')}
         onPress={() => void handleSignOut()}
+        variant="secondary"
       />
     </AppScreen>
   );
@@ -429,7 +431,7 @@ function TeamJoinCodeSection() {
   }
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('settings.teamJoinCodeTitle')}
       </Text>
@@ -511,8 +513,9 @@ function TeamJoinCodeSection() {
             : t('settings.teamJoinCodeRegenerateButton')
         }
         onPress={confirmRegenerate}
+        variant="secondary"
       />
-    </View>
+    </Card>
   );
 }
 
@@ -616,7 +619,7 @@ function JoinAnotherTeamSection() {
   }
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('settings.joinAnotherTeamTitle')}
       </Text>
@@ -643,8 +646,9 @@ function JoinAnotherTeamSection() {
             : t('settings.joinAnotherTeamButton')
         }
         onPress={() => void joinTeam()}
+        variant="secondary"
       />
-    </View>
+    </Card>
   );
 }
 
@@ -827,14 +831,14 @@ function TeamBrandingSection() {
 
   if (!activeTeam) {
     return (
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('settings.teamBrandingNoTeamTitle')}
         </Text>
         <Text style={appScreenStyles.cardDescription}>
           {t('settings.teamBrandingNoTeamDescription')}
         </Text>
-      </View>
+      </Card>
     );
   }
 
@@ -845,7 +849,7 @@ function TeamBrandingSection() {
   const teamName = brandingQuery.data?.name ?? activeTeam.name;
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('settings.teamBrandingTitle')}
       </Text>
@@ -883,6 +887,7 @@ function TeamBrandingSection() {
                 : t('settings.teamBrandingUploadButton')
             }
             onPress={() => void uploadLogo()}
+            variant="secondary"
           />
         </View>
       </View>
@@ -940,7 +945,7 @@ function TeamBrandingSection() {
         }
         onPress={() => void saveColors()}
       />
-    </View>
+    </Card>
   );
 }
 

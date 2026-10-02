@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
@@ -726,7 +727,7 @@ export function DirectorAssistantCoachesScreen({ navigation }: Props) {
       description={t('directorAssistantCoaches.description')}
       title={t('directorAssistantCoaches.title')}
     >
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('directorAssistantCoaches.inviteTitle')}
         </Text>
@@ -825,9 +826,9 @@ export function DirectorAssistantCoachesScreen({ navigation }: Props) {
           }
           onPress={() => void inviteAssistantCoach()}
         />
-      </View>
+      </Card>
 
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('directorAssistantCoaches.addExistingTitle')}
         </Text>
@@ -1016,8 +1017,9 @@ export function DirectorAssistantCoachesScreen({ navigation }: Props) {
               : t('directorAssistantCoaches.addMembershipButton')
           }
           onPress={() => void addCoachToTeam()}
+          variant="secondary"
         />
-      </View>
+      </Card>
 
     </AppScreen>
   );
@@ -1172,6 +1174,7 @@ function AssignmentForm({
             : t('directorAssistantCoaches.saveAssignmentButton')
         }
         onPress={onSave}
+        variant="secondary"
       />
     </View>
   );

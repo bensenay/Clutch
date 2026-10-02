@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -601,7 +602,7 @@ export function LineupBuilderScreen({ route }: Props) {
           </Pressable>
         ))}
       </View>
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={appScreenStyles.cardTitle}>
           {t('lineup.playerPoolTitle')}
         </Text>
@@ -637,7 +638,7 @@ export function LineupBuilderScreen({ route }: Props) {
             </View>
           </ScrollView>
         )}
-      </View>
+      </Card>
       {isReadOnly ? null : (
         <SavedLineupPicker
           isLoading={savedLineupsQuery.isLoading}
@@ -825,7 +826,7 @@ function SavedLineupPicker({
   const { t } = useTranslation();
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('lineup.applySavedTitle')}
       </Text>
@@ -870,11 +871,12 @@ function SavedLineupPicker({
               icon="checkmark-circle-outline"
               title={t('lineup.applySavedButton')}
               onPress={() => onApply(lineup)}
+              variant="secondary"
             />
           </View>
         );
       })}
-    </View>
+    </Card>
   );
 }
 
@@ -960,7 +962,7 @@ function GoalieSection({
   const { t } = useTranslation();
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>
         {t('lineup.goaliesTitle')}
       </Text>
@@ -1001,7 +1003,7 @@ function GoalieSection({
           </Pressable>
         );
       })}
-    </View>
+    </Card>
   );
 }
 
@@ -1040,7 +1042,7 @@ function renderForwardLineSection({
   toggleFourthLine: () => void;
 }) {
   return (
-    <View style={[appScreenStyles.card, styles.compactCard]}>
+    <Card style={[appScreenStyles.card, styles.compactCard]}>
       <Text style={appScreenStyles.cardTitle}>{title}</Text>
       {lines.map((line) => (
         <View key={line.line_number} style={styles.unit}>
@@ -1122,9 +1124,10 @@ function renderForwardLineSection({
               : t('lineup.addFourthLineButton')
           }
           onPress={toggleFourthLine}
+          variant="secondary"
         />
       )}
-    </View>
+    </Card>
   );
 }
 
@@ -1169,7 +1172,7 @@ function SpecialTeamsUnitsSection({
   const { t } = useTranslation();
 
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>{title}</Text>
       {lines.map((line) => {
         const pair = pairs.find(
@@ -1308,7 +1311,7 @@ function SpecialTeamsUnitsSection({
           </View>
         );
       })}
-    </View>
+    </Card>
   );
 }
 
@@ -1340,7 +1343,7 @@ function renderDefensePairSection({
   t: (key: string, values?: Record<string, unknown>) => string;
 }) {
   return (
-    <View style={appScreenStyles.card}>
+    <Card style={appScreenStyles.card}>
       <Text style={appScreenStyles.cardTitle}>{title}</Text>
       {pairs.map((pair) => (
         <View key={pair.pair_number} style={styles.unit}>
@@ -1391,7 +1394,7 @@ function renderDefensePairSection({
           </View>
         </View>
       ))}
-    </View>
+    </Card>
   );
 }
 

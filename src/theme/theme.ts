@@ -1,23 +1,25 @@
-export const rinkNavy = '#0B1F33';
-export const iceWhite = '#EAF2F7';
-export const frostSteel = '#4A7A9B';
-export const goalRed = '#D8262F';
-export const slateGrey = '#8FA3B3';
-export const hornAmber = '#F2A93B';
+import type { TextStyle, ViewStyle } from 'react-native';
+
+export const rinkNavy = '#161B21';
+export const iceWhite = '#E4E8EB';
+export const frostSteel = '#7A8C9A';
+export const goalRed = '#C23B41';
+export const slateGrey = '#8E9AA4';
+export const hornAmber = '#D9A24A';
 
 export const colors = {
-  border: '#C7D6E0',
+  border: '#BCC4CA',
   card: iceWhite,
-  cardPressed: '#DCE8EF',
-  dangerSoft: '#F8DDDF',
-  fieldBackground: '#FFFFFF',
+  cardPressed: '#D3D9DD',
+  dangerSoft: '#EBD9DA',
+  fieldBackground: '#F4F6F7',
   rinkNavy,
-  rinkSurface: '#102A43',
-  success: '#247A55',
-  successSoft: '#DCEFE6',
+  rinkSurface: '#1F262D',
+  success: '#2F7656',
+  successSoft: '#D8E6DE',
   textOnDark: iceWhite,
   textPrimary: rinkNavy,
-  warningSoft: '#FAECD2',
+  warningSoft: '#EDE3CF',
   iceWhite,
   frostSteel,
   goalRed,
@@ -47,20 +49,23 @@ export const spacing = {
   xxl: 48,
 };
 
+// Sharper scale: precise machined corners. `pill` stays fully round only
+// for true circles (avatars, icon badges); chips/badges should use `chip`.
 export const radii = {
-  xs: 2,
-  tight: 3,
-  xsm: 5,
-  sm: 8,
-  md: 10,
-  card: 12,
-  lg: 14,
-  xl: 16,
-  xxl: 20,
-  swatchButton: 22,
-  previewCircle: 28,
-  round: 32,
-  logoLarge: 42,
+  xs: 1,
+  tight: 2,
+  xsm: 2,
+  sm: 3,
+  md: 4,
+  card: 5,
+  lg: 5,
+  xl: 6,
+  xxl: 8,
+  swatchButton: 10,
+  previewCircle: 14,
+  round: 16,
+  logoLarge: 20,
+  chip: 3,
   pill: 999,
 };
 
@@ -124,4 +129,91 @@ export const sizes = {
 
 export const fonts = {
   display: 'Oswald_700Bold',
+};
+
+// Beveled hairline edge replacing drop shadows: 1px border whose top edge
+// catches light (lighter) while left/right/bottom stay darker.
+export const bevel = {
+  light: {
+    borderBottomColor: '#BCC4CA',
+    borderColor: '#BCC4CA',
+    borderLeftColor: '#C8CFD4',
+    borderRightColor: '#C8CFD4',
+    borderTopColor: '#F8FAFB',
+    borderWidth: 1,
+  } satisfies ViewStyle,
+  dark: {
+    borderBottomColor: '#0E1217',
+    borderColor: '#2A323A',
+    borderLeftColor: '#262E36',
+    borderRightColor: '#262E36',
+    borderTopColor: '#434E59',
+    borderWidth: 1,
+  } satisfies ViewStyle,
+  accent: {
+    borderBottomColor: '#7E2227',
+    borderColor: '#8F2A30',
+    borderLeftColor: '#8F2A30',
+    borderRightColor: '#8F2A30',
+    borderTopColor: '#E58A8E',
+    borderWidth: 1,
+  } satisfies ViewStyle,
+};
+
+// Kept for existing call sites: now a hairline bevel, not a blurred shadow.
+export const shadows = {
+  subtle: bevel.light,
+};
+
+type Gradient = {
+  colors: readonly [string, string, ...string[]];
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+};
+
+const topDown = { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } };
+
+// Brushed surfaces: same hue top to bottom, ~4% lighter at the top and ~5%
+// darker at the bottom, so it reads as light falling on metal, not a color shift.
+export const brushed = {
+  card: { colors: ['#EBEEF0', '#E4E8EB', '#DBE0E4'], ...topDown } as Gradient,
+  dark: { colors: ['#1E242B', '#161B21', '#11151A'], ...topDown } as Gradient,
+  steel: { colors: ['#EEF1F3', '#E1E6E9', '#D2D8DC'], ...topDown } as Gradient,
+  steelPressed: {
+    colors: ['#C9D0D5', '#D6DCE0', '#DEE3E6'],
+    ...topDown,
+  } as Gradient,
+  accent: { colors: ['#CE4B51', '#C23B41', '#A92F35'], ...topDown } as Gradient,
+  accentPressed: {
+    colors: ['#962A2F', '#A53138', '#B03840'],
+    ...topDown,
+  } as Gradient,
+  wood: {
+    colors: ['#A57248', '#865937', '#684128'],
+    ...topDown,
+  } as Gradient,
+  woodPressed: {
+    colors: ['#654027', '#74492D', '#815536'],
+    ...topDown,
+  } as Gradient,
+  woodInterior: {
+    colors: ['#33251C', '#201A16', '#151311'],
+    ...topDown,
+  } as Gradient,
+};
+
+// Inner shadow line at the top edge of a pressed control.
+export const insetShadow = 'rgba(0, 0, 0, 0.28)';
+
+// Selected segment/filter/chip: quiet dark steel plate, not the accent color.
+export const selectionStyles = {
+  active: {
+    backgroundColor: '#2C353D',
+    borderBottomColor: '#12161B',
+    borderColor: '#1B2127',
+    borderTopColor: '#4A5662',
+  } satisfies ViewStyle,
+  activeText: {
+    color: iceWhite,
+  } satisfies TextStyle,
 };

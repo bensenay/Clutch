@@ -1,3 +1,4 @@
+import { SteelBar } from '../components/SteelBar';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AccountTypeScreen } from '../screens/AccountTypeScreen';
@@ -22,6 +23,7 @@ export function AuthStack() {
         contentStyle: { backgroundColor: rinkNavy },
         headerBackTitle: t('common.back'),
         headerShadowVisible: false,
+        headerBackground: () => <SteelBar />,
         headerStyle: { backgroundColor: rinkNavy },
         headerTintColor: iceWhite,
         headerTitleStyle: { fontFamily: fonts.display },

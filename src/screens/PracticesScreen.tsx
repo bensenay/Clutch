@@ -1,4 +1,5 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { Card } from '../components/Card';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +20,14 @@ import type {
 import { fetchWithCache, makeTeamCacheKey } from '../offline/cache';
 import { OfflineNotice } from '../offline/OfflineNotice';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
-import { colors, goalRed, radii, sizes, spacing } from '../theme/theme';
+import {
+  colors,
+  goalRed,
+  radii,
+  shadows,
+  sizes,
+  spacing,
+} from '../theme/theme';
 import { formatGameDate } from './GameListScreen';
 
 type Props = CompositeScreenProps<
@@ -99,7 +107,7 @@ export function PracticesScreen({ navigation }: Props) {
         <Text style={appScreenStyles.error}>{t('practices.loadError')}</Text>
       ) : null}
       <OfflineNotice cachedAt={cachedAt} />
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <View style={appScreenStyles.row}>
           <View style={styles.drillHeaderCopy}>
             <Text style={appScreenStyles.cardTitle}>
@@ -130,21 +138,12 @@ export function PracticesScreen({ navigation }: Props) {
             />
           )}
         </View>
-      </View>
+      </Card>
       {!practicePlansQuery.isLoading && plans.length === 0 ? (
         <EmptyState
           description={t('practices.emptyDescription')}
           icon="clipboard-outline"
           title={t('practices.emptyTitle')}
-          action={
-            isReadOnlyTeam ? undefined : (
-              <AppButton
-                icon="add-circle-outline"
-                title={t('practices.addFirstPracticePlanButton')}
-                onPress={() => navigation.navigate('PracticePlanDetail')}
-              />
-            )
-          }
         />
       ) : null}
       <View style={appScreenStyles.list}>
@@ -159,6 +158,7 @@ export function PracticesScreen({ navigation }: Props) {
               })
             }
             style={appScreenStyles.card}
+            surface
           >
             <Text style={appScreenStyles.cardTitle}>
               {formatGameDate(plan.practice_date)}
@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   libraryAction: {
+    ...shadows.subtle,
     alignItems: 'center',
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
@@ -224,7 +225,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   libraryActionAccent: {
-    borderColor: goalRed,
+    borderColor: '#2C353D',
+    borderTopColor: '#12161B',
   },
   libraryActionText: {
     color: colors.textPrimary,
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
     width: sizes.touch,
   },
   libraryIconAccent: {
-    backgroundColor: goalRed,
+    backgroundColor: '#2C353D',
   },
   drillHeaderCopy: {
     flex: 1,

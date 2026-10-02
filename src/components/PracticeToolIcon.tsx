@@ -68,9 +68,9 @@ export function PracticeToolIcon({
       ) : null}
       {name === 'net' ? (
         <>
-          <Path {...common} d="M5 8h18v14H5z" />
-          <Path {...common} d="m5 8 4 4m4-4 10 10M9 8l14 14M5 14l8 8m4-14 6 6M5 18l4 4" opacity={0.52} />
-          <Path {...common} d="M3.5 22H24.5" strokeWidth={2.5} />
+          <Path {...common} d="M6 4v20h7c7 0 10-3.9 10-10S20 4 13 4H6Z" />
+          <Path {...common} d="M7 9h12M7 14h16M7 19h12M12 5v18" opacity={0.52} />
+          <Path {...common} d="M4 3v22" strokeWidth={2.8} />
         </>
       ) : null}
       {name === 'text' ? (

@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -148,7 +149,7 @@ export function SuperAdminScreen(_props: Props) {
       ) : null}
       <View style={appScreenStyles.list}>
         {organizations.map((school) => (
-          <View key={school.id} style={appScreenStyles.card}>
+          <Card key={school.id} style={appScreenStyles.card}>
             <View style={appScreenStyles.row}>
               <View style={styles.schoolCopy}>
                 <Text style={appScreenStyles.cardTitle}>{school.name}</Text>
@@ -189,10 +190,10 @@ export function SuperAdminScreen(_props: Props) {
                   ? t('superAdmin.suspendButton')
                   : t('superAdmin.activateButton')
               }
-              variant={school.status === 'active' ? 'secondary' : 'primary'}
+              variant="secondary"
               onPress={() => confirmStatusChange(school)}
             />
-          </View>
+          </Card>
         ))}
       </View>
     </AppScreen>

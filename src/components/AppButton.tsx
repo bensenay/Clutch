@@ -1,6 +1,22 @@
-import { StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, goalRed, radii, spacing } from '../theme/theme';
-import { AnimatedPressable } from './AnimatedPressable';
+import { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  bevel,
+  brushed,
+  colors,
+  goalRed,
+  insetShadow,
+  radii,
+  spacing,
+} from '../theme/theme';
 import { AppIcon, type AppIconName } from './AppIcon';
 
 type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -22,28 +38,51 @@ export function AppButton({
   title,
   variant = 'primary',
 }: AppButtonProps) {
-  const foregroundColor =
-    variant === 'primary' || variant === 'danger'
-      ? colors.textOnDark
-      : variant === 'secondary'
-        ? colors.textPrimary
-        : goalRed;
+  const [pressed, setPressed] = useState(false);
+  const isPrimary = variant === 'primary';
+  const isGhost = variant === 'ghost';
+  const foregroundColor = isPrimary
+    ? colors.textOnDark
+    : variant === 'danger'
+      ? goalRed
+      : colors.textPrimary;
+  const gradient = isPrimary
+    ? pressed
+      ? brushed.accentPressed
+      : brushed.accent
+    : pressed
+      ? brushed.steelPressed
+      : brushed.steel;
 
   return (
-    <AnimatedPressable
+    <Pressable
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       style={[
         styles.base,
-        styles[variant],
+        !isGhost && (isPrimary ? bevel.accent : bevel.light),
+        isGhost && styles.ghost,
+        pressed && !isGhost && styles.pressed,
         disabled && styles.disabled,
         style,
       ]}
     >
+      {isGhost ? null : (
+        <LinearGradient
+          {...gradient}
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { borderRadius: radii.md }]}
+        />
+      )}
+      {pressed && !isGhost ? (
+        <View pointerEvents="none" style={styles.insetLine} />
+      ) : null}
       {icon ? <AppIcon color={foregroundColor} name={icon} size={18} /> : null}
       <Text style={[styles.label, { color: foregroundColor }]}>{title}</Text>
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
@@ -61,22 +100,24 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
-  danger: {
-    backgroundColor: goalRed,
-  },
   ghost: {
     backgroundColor: 'transparent',
+  },
+  insetLine: {
+    backgroundColor: insetShadow,
+    height: 2,
+    left: 1,
+    position: 'absolute',
+    right: 1,
+    top: 0,
   },
   label: {
     fontSize: 14,
     fontWeight: '800',
   },
-  primary: {
-    backgroundColor: goalRed,
-  },
-  secondary: {
-    backgroundColor: colors.fieldBackground,
-    borderColor: colors.border,
-    borderWidth: 1,
+  // Pushed in: the lit top edge goes dark and the label sinks a pixel.
+  pressed: {
+    borderTopColor: '#6E7378',
+    paddingTop: spacing.sm + 1,
   },
 });

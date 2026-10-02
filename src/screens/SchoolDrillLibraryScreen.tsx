@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
@@ -10,6 +11,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingState } from '../components/LoadingState';
+import { KEYBOARD_DISMISS_ACCESSORY_ID } from '../components/KeyboardDismissAccessory';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import { isLikelyNetworkError } from '../offline/cache';
 import { useActiveTeam } from '../teams/ActiveTeamContext';
@@ -139,9 +141,12 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
+          inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined}
           onChangeText={setSearch}
+          onSubmitEditing={Keyboard.dismiss}
           placeholder={t('schoolDrillLibrary.searchPlaceholder')}
           placeholderTextColor={slateGrey}
+          returnKeyType="done"
           style={styles.searchInput}
           value={search}
         />
@@ -166,7 +171,7 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
           const canDuplicate = Boolean(activeTeam && session && !isReadOnlyTeam);
 
           return (
-            <View key={drill.id} style={appScreenStyles.card}>
+            <Card key={drill.id} style={appScreenStyles.card}>
               <AnimatedPressable
                 accessibilityRole="button"
                 onPress={() =>
@@ -204,6 +209,7 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
                       : t('schoolDrillLibrary.duplicateButton')
                   }
                   onPress={() => void duplicateDrill(drill)}
+                  variant="secondary"
                 />
                 {isOwnActiveTeamDrill ? (
                   <Text style={styles.ownTeamLabel}>
@@ -211,7 +217,7 @@ export function SchoolDrillLibraryScreen({ navigation }: Props) {
                   </Text>
                 ) : null}
               </View>
-            </View>
+            </Card>
           );
         })}
       </View>

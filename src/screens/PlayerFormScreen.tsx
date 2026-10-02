@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
@@ -320,7 +321,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
       {playerQuery.error ? (
         <Text style={appScreenStyles.error}>{t('playerForm.loadError')}</Text>
       ) : null}
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <FormField
           autoCapitalize="words"
           label={t('playerForm.firstNameLabel')}
@@ -450,7 +451,7 @@ export function PlayerFormScreen({ navigation, route }: Props) {
             onPress={confirmRemove}
           />
         ) : null}
-      </View>
+      </Card>
     </AppScreen>
   );
 }

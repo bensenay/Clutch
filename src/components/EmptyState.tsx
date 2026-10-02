@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Card } from './Card';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radii, spacing } from '../theme/theme';
 import { AppIcon, type AppIconName } from './AppIcon';
@@ -18,7 +19,7 @@ export function EmptyState({
   title,
 }: EmptyStateProps) {
   return (
-    <View style={[appScreenStyles.card, styles.container]}>
+    <Card style={[appScreenStyles.card, styles.container]}>
       <View style={styles.iconBadge}>
         <AppIcon color={colors.goalRed} name={icon} size={26} />
       </View>
@@ -27,7 +28,7 @@ export function EmptyState({
         {description}
       </Text>
       {action ? <View style={styles.action}>{action}</View> : null}
-    </View>
+    </Card>
   );
 }
 

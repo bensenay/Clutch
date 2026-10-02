@@ -1,9 +1,14 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LayoutChangeEvent,
+  KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +16,8 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -31,10 +38,15 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 import { AppButton } from '../components/AppButton';
+import { AppIcon } from '../components/AppIcon';
 import { AppScreen, appScreenStyles } from '../components/AppScreen';
 import { LoadingState } from '../components/LoadingState';
 import { PracticeToolIcon, type PracticeToolIconName } from '../components/PracticeToolIcon';
 import { RinkWatermark } from '../components/RinkWatermark';
+import {
+  KEYBOARD_DISMISS_ACCESSORY_ID,
+  KeyboardDismissAccessory,
+} from '../components/KeyboardDismissAccessory';
 import type { AuthenticatedStackParamList } from '../navigation/types';
 import {
   isLikelyNetworkError,
@@ -53,6 +65,7 @@ import {
   lineHeights,
   radii,
   rinkNavy,
+  shadows,
   sizes,
   slateGrey,
   spacing,
@@ -65,7 +78,12 @@ type PathObjectType = 'skate_path' | 'pass_line';
 type ZoneObjectType = 'shaded_zone';
 type DrillObjectType = PlacedObjectType | PathObjectType | ZoneObjectType;
 type PlayerTokenLabel = 'F' | 'F1' | 'F2' | 'F3' | 'D' | 'D1' | 'D2' | 'G' | 'C';
-type PathStyle = 'straight' | 'curved' | 'backward' | 'freehand';
+type PathStyle =
+  | 'straight'
+  | 'curved'
+  | 'backward'
+  | 'freehand'
+  | 'freehand_backward';
 type MarkerVariant = 'single' | 'group';
 type PathPoint = {
   x: number;
@@ -202,6 +220,12 @@ export function DrillEditorScreen({ navigation, route }: Props) {
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [fullscreenViewportSize, setFullscreenViewportSize] = useState<CanvasSize>({
+    height: 0,
+    width: 0,
+  });
   const undoStack = useRef<DrillCanvasObject[][]>([]);
   const redoStack = useRef<DrillCanvasObject[][]>([]);
   const isLandscape = windowDimensions.width > windowDimensions.height;
@@ -221,7 +245,23 @@ export function DrillEditorScreen({ navigation, route }: Props) {
     compactAvailableWidth,
     compactAvailableHeight * (RINK_WIDTH / RINK_HEIGHT),
   );
-  const compactCanvasHeight = compactCanvasWidth / (RINK_WIDTH / RINK_HEIGHT);
+  const fullscreenViewportWidth =
+    fullscreenViewportSize.width || windowDimensions.width;
+  const fullscreenViewportHeight =
+    fullscreenViewportSize.height || Math.max(150, windowDimensions.height - 54);
+  const fullscreenAvailableWidth = Math.max(
+    240,
+    fullscreenViewportWidth - spacing.sm * 2,
+  );
+  const fullscreenAvailableHeight = Math.max(
+    150,
+    fullscreenViewportHeight - spacing.sm * 2,
+  );
+  const fullscreenBaseWidth = Math.min(
+    fullscreenAvailableWidth,
+    fullscreenAvailableHeight * (RINK_WIDTH / RINK_HEIGHT),
+  );
+  const fullscreenBaseHeight = fullscreenBaseWidth / (RINK_WIDTH / RINK_HEIGHT);
 
   const drillQuery = useQuery({
     queryKey: ['drill', drillId],
@@ -283,6 +323,24 @@ export function DrillEditorScreen({ navigation, route }: Props) {
     redoStack.current = [];
     setSelectedObjectId(null);
   }, [drillQuery.data]);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      return;
+    }
+
+    void ScreenOrientation.lockAsync(
+      ScreenOrientation.OrientationLock.LANDSCAPE,
+    ).catch((orientationError: unknown) => {
+      console.warn('Unable to lock drill editor to landscape:', orientationError);
+    });
+
+    return () => {
+      void ScreenOrientation.unlockAsync().catch((orientationError: unknown) => {
+        console.warn('Unable to restore device orientation:', orientationError);
+      });
+    };
+  }, [isFullscreen]);
 
   const selectedObject = useMemo(
     () => objects.find((object) => object.id === selectedObjectId) ?? null,
@@ -711,6 +769,90 @@ export function DrillEditorScreen({ navigation, route }: Props) {
     }
   }
 
+  function selectTool(tool: ToolChoice) {
+    setSelectedTool(tool);
+    setShowPlayerChoices(false);
+    setShowSkateChoices(false);
+    setShowPassChoices(false);
+    setShowPuckChoices(false);
+    setShowConeChoices(false);
+  }
+
+  function renderToolbar(compact: boolean, fullscreen = false) {
+    return (
+      <DrillToolbar
+        compact={compact}
+        fullscreen={fullscreen}
+        selectedTool={selectedTool}
+        showPlayerChoices={showPlayerChoices}
+        showSkateChoices={showSkateChoices}
+        showPassChoices={showPassChoices}
+        showPuckChoices={showPuckChoices}
+        showConeChoices={showConeChoices}
+        tokenColor={tokenColor}
+        onSelectTokenColor={setTokenColor}
+        onSelectTool={selectTool}
+        onTogglePlayerChoices={() =>
+          setShowPlayerChoices((currentValue) => !currentValue)
+        }
+        onToggleSkateChoices={() =>
+          setShowSkateChoices((currentValue) => !currentValue)
+        }
+        onTogglePassChoices={() =>
+          setShowPassChoices((currentValue) => !currentValue)
+        }
+        onTogglePuckChoices={() =>
+          setShowPuckChoices((currentValue) => !currentValue)
+        }
+        onToggleConeChoices={() =>
+          setShowConeChoices((currentValue) => !currentValue)
+        }
+      />
+    );
+  }
+
+  function renderCanvas(style?: StyleProp<ViewStyle>) {
+    return (
+      <GestureDetector gesture={drawGesture}>
+        <Pressable
+          accessibilityRole="button"
+          onLayout={handleCanvasLayout}
+          onPress={(event) =>
+            handleCanvasPress(
+              event.nativeEvent.locationX,
+              event.nativeEvent.locationY,
+            )
+          }
+          style={[styles.canvas, style]}
+        >
+          <RinkBackground />
+          <PathLayer
+            draftPath={draftPath}
+            draftZonePoints={draftZonePoints}
+            paths={objects.filter(isPathObject)}
+            selectedObjectId={selectedObjectId}
+            zones={objects.filter(isShadedZoneObject)}
+            onInteract={markObjectInteraction}
+            onSelect={setSelectedObjectId}
+          />
+          {objects.filter(isPlacedObject).map((object) => (
+            <DrillObjectView
+              canvasSize={canvasSize}
+              isReadOnly={isReadOnly}
+              isSelected={selectedObjectId === object.id}
+              key={object.id}
+              object={object}
+              onEditText={beginTextEdit}
+              onInteract={markObjectInteraction}
+              onMove={moveObject}
+              onSelect={setSelectedObjectId}
+            />
+          ))}
+        </Pressable>
+      </GestureDetector>
+    );
+  }
+
   if (!activeTeam) {
     return (
       <AppScreen
@@ -723,13 +865,19 @@ export function DrillEditorScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.screen}>
       <RinkWatermark />
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          useCompactLayout && styles.compactContent,
-        ]}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
       >
+        <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          contentContainerStyle={[
+            styles.content,
+            useCompactLayout && styles.compactContent,
+          ]}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={[styles.header, useCompactLayout && styles.compactHeader]}>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{t('common.brand')}</Text>
@@ -765,9 +913,12 @@ export function DrillEditorScreen({ navigation, route }: Props) {
             accessibilityLabel={t('drillEditor.nameLabel')}
             autoCapitalize="words"
             editable={!isReadOnly}
+            inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined}
             onChangeText={setName}
+            onSubmitEditing={Keyboard.dismiss}
             placeholder={t('drillEditor.namePlaceholder')}
             placeholderTextColor={slateGrey}
+            returnKeyType="done"
             style={[styles.input, styles.compactMetadataInput]}
             value={name}
           />
@@ -775,9 +926,12 @@ export function DrillEditorScreen({ navigation, route }: Props) {
             accessibilityLabel={t('drillEditor.descriptionLabel')}
             autoCapitalize="sentences"
             editable={!isReadOnly}
+            inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined}
             onChangeText={setDescription}
+            onSubmitEditing={Keyboard.dismiss}
             placeholder={t('drillEditor.descriptionPlaceholder')}
             placeholderTextColor={slateGrey}
+            returnKeyType="done"
             style={[styles.input, styles.compactMetadataInput]}
             value={description}
           />
@@ -803,14 +957,17 @@ export function DrillEditorScreen({ navigation, route }: Props) {
         <Text style={appScreenStyles.note}>{t('common.readOnlyNotice')}</Text>
       ) : null}
       {useCompactLayout ? null : (
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <Text style={styles.label}>{t('drillEditor.nameLabel')}</Text>
         <TextInput
           autoCapitalize="words"
           editable={!isReadOnly}
+          inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined}
           onChangeText={setName}
+          onSubmitEditing={Keyboard.dismiss}
           placeholder={t('drillEditor.namePlaceholder')}
           placeholderTextColor={slateGrey}
+          returnKeyType="done"
           style={styles.input}
           value={name}
         />
@@ -818,6 +975,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
         <TextInput
           autoCapitalize="sentences"
           editable={!isReadOnly}
+          inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined}
           multiline
           onChangeText={setDescription}
           placeholder={t('drillEditor.descriptionPlaceholder')}
@@ -825,7 +983,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           style={[styles.input, styles.descriptionInput]}
           value={description}
         />
-      </View>
+      </Card>
       )}
       {drillId && !isReadOnly ? (
         useCompactLayout ? null : (
@@ -856,53 +1014,53 @@ export function DrillEditorScreen({ navigation, route }: Props) {
         </View>
         )
       ) : null}
-      <View style={[styles.canvasCard, useCompactLayout && styles.compactCanvasCard]}>
-        <GestureDetector gesture={drawGesture}>
-          <Pressable
-            accessibilityRole="button"
-            onLayout={handleCanvasLayout}
-            onPress={(event) =>
-              handleCanvasPress(
-                event.nativeEvent.locationX,
-                event.nativeEvent.locationY,
-              )
-            }
-            style={[
-              styles.canvas,
-              useCompactLayout && {
-                alignSelf: 'center',
-                aspectRatio: undefined,
-                height: compactCanvasHeight,
-                width: compactCanvasWidth,
-              },
-            ]}
-          >
-            <RinkBackground />
-            <PathLayer
-              draftPath={draftPath}
-              draftZonePoints={draftZonePoints}
-              paths={objects.filter(isPathObject)}
-              selectedObjectId={selectedObjectId}
-              zones={objects.filter(isShadedZoneObject)}
-              onInteract={markObjectInteraction}
-              onSelect={setSelectedObjectId}
-            />
-            {objects.filter(isPlacedObject).map((object) => (
-              <DrillObjectView
-                canvasSize={canvasSize}
-                isReadOnly={isReadOnly}
-                isSelected={selectedObjectId === object.id}
-                key={object.id}
-                object={object}
-                onEditText={beginTextEdit}
-                onInteract={markObjectInteraction}
-                onMove={moveObject}
-                onSelect={setSelectedObjectId}
-              />
-            ))}
-          </Pressable>
-        </GestureDetector>
+      <View style={styles.canvasHeadingRow}>
+        <Text style={styles.canvasHint}>{t('drillEditor.canvasScrollHint')}</Text>
+        <AppButton
+          icon="expand-outline"
+          title={t('drillEditor.fullscreenButton')}
+          onPress={() => {
+            Keyboard.dismiss();
+            setCanvasZoom(1);
+            setFullscreenViewportSize({ height: 0, width: 0 });
+            setShowPlayerChoices(false);
+            setShowSkateChoices(false);
+            setShowPassChoices(false);
+            setShowPuckChoices(false);
+            setShowConeChoices(false);
+            setIsFullscreen(true);
+          }}
+          variant="secondary"
+        />
       </View>
+      {!isFullscreen ? (
+      <View style={[styles.canvasCard, useCompactLayout && styles.compactCanvasCard]}>
+        <View style={styles.canvasStage}>
+          <View style={styles.canvasSurface}>
+            {renderCanvas(
+              useCompactLayout
+                ? {
+                    alignSelf: 'center',
+                    aspectRatio: undefined,
+                    height: Math.max(0, compactCanvasWidth - 36) / 2,
+                    width: Math.max(0, compactCanvasWidth - 36),
+                  }
+                : undefined,
+            )}
+          </View>
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            pointerEvents="none"
+            style={styles.scrollRail}
+          >
+            <AppIcon color={colors.frostSteel} name="chevron-up" size={18} />
+            <Text style={styles.scrollRailText}>{t('drillEditor.scrollRailLabel')}</Text>
+            <AppIcon color={colors.frostSteel} name="chevron-down" size={18} />
+          </View>
+        </View>
+      </View>
+      ) : null}
       <View style={styles.selectedBar}>
         <Text style={styles.selectedText}>
           {selectedObject
@@ -945,6 +1103,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
                   icon="trash-outline"
                   title={t('drillEditor.deleteButton')}
                   onPress={deleteSelectedObject}
+                  variant="danger"
                 />
               </>
             ) : null}
@@ -956,9 +1115,12 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           <Text style={styles.label}>{t('drillEditor.textDraftLabel')}</Text>
           <TextInput
             autoCapitalize="sentences"
+            inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DISMISS_ACCESSORY_ID : undefined}
             onChangeText={setTextDraft}
+            onSubmitEditing={Keyboard.dismiss}
             placeholder={t('drillEditor.textDraftPlaceholder')}
             placeholderTextColor={slateGrey}
+            returnKeyType="done"
             style={styles.input}
             value={textDraft}
           />
@@ -968,6 +1130,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
               icon="checkmark-outline"
               title={t('drillEditor.confirmTextButton')}
               onPress={confirmText}
+              variant="secondary"
             />
             <AppButton
               icon="close-outline"
@@ -987,6 +1150,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
               icon="checkmark-outline"
               title={t('drillEditor.shadedZoneDoneButton')}
               onPress={finishShadedZone}
+              variant="secondary"
             />
             <AppButton
               disabled={draftZonePoints.length === 0}
@@ -1009,42 +1173,7 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           }}
         />
       ) : null}
-      {isReadOnly ? null : (
-        <DrillToolbar
-          compact={useCompactLayout}
-          selectedTool={selectedTool}
-          showPlayerChoices={showPlayerChoices}
-          showSkateChoices={showSkateChoices}
-          showPassChoices={showPassChoices}
-          showPuckChoices={showPuckChoices}
-          showConeChoices={showConeChoices}
-          tokenColor={tokenColor}
-          onSelectTokenColor={setTokenColor}
-          onSelectTool={(tool) => {
-            setSelectedTool(tool);
-            setShowPlayerChoices(false);
-            setShowSkateChoices(false);
-            setShowPassChoices(false);
-            setShowPuckChoices(false);
-            setShowConeChoices(false);
-          }}
-          onTogglePlayerChoices={() =>
-            setShowPlayerChoices((currentValue) => !currentValue)
-          }
-          onToggleSkateChoices={() =>
-            setShowSkateChoices((currentValue) => !currentValue)
-          }
-          onTogglePassChoices={() =>
-            setShowPassChoices((currentValue) => !currentValue)
-          }
-          onTogglePuckChoices={() =>
-            setShowPuckChoices((currentValue) => !currentValue)
-          }
-          onToggleConeChoices={() =>
-            setShowConeChoices((currentValue) => !currentValue)
-          }
-        />
-      )}
+      {isReadOnly || isFullscreen ? null : renderToolbar(useCompactLayout)}
       {isReadOnly ? null : (
         useCompactLayout ? null : (
           <AppButton
@@ -1059,7 +1188,92 @@ export function DrillEditorScreen({ navigation, route }: Props) {
           />
         )
       )}
-      </ScrollView>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsFullscreen(false)}
+        supportedOrientations={[
+          'landscape',
+          'landscape-left',
+          'landscape-right',
+        ]}
+        visible={isFullscreen}
+      >
+        <SafeAreaView style={styles.fullscreenRoot}>
+          <View style={styles.fullscreenHeader}>
+            <Text numberOfLines={1} style={styles.fullscreenTitle}>
+              {name || t('drillEditor.addTitle')}
+            </Text>
+            <View style={styles.zoomControls}>
+              <Pressable
+                accessibilityLabel={t('drillEditor.zoomOutButton')}
+                accessibilityRole="button"
+                disabled={canvasZoom <= 0.75}
+                onPress={() => setCanvasZoom((current) => Math.max(0.75, current - 0.25))}
+                style={styles.fullscreenIconButton}
+              >
+                <AppIcon color={iceWhite} name="remove" size={24} />
+              </Pressable>
+              <Text style={styles.zoomLabel}>{Math.round(canvasZoom * 100)}%</Text>
+              <Pressable
+                accessibilityLabel={t('drillEditor.zoomInButton')}
+                accessibilityRole="button"
+                disabled={canvasZoom >= 1.75}
+                onPress={() => setCanvasZoom((current) => Math.min(1.75, current + 0.25))}
+                style={styles.fullscreenIconButton}
+              >
+                <AppIcon color={iceWhite} name="add" size={24} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={t('common.close')}
+                accessibilityRole="button"
+                onPress={() => setIsFullscreen(false)}
+                style={styles.fullscreenIconButton}
+              >
+                <AppIcon color={iceWhite} name="close" size={26} />
+              </Pressable>
+            </View>
+          </View>
+          <View style={styles.fullscreenBody}>
+            <View
+              onLayout={(event) => {
+                const { height, width } = event.nativeEvent.layout;
+                setFullscreenViewportSize((current) =>
+                  Math.abs(current.height - height) < 1 &&
+                  Math.abs(current.width - width) < 1
+                    ? current
+                    : { height, width },
+                );
+              }}
+              style={styles.fullscreenCanvasViewport}
+            >
+              {renderCanvas({
+                aspectRatio: undefined,
+                height: fullscreenBaseHeight * canvasZoom,
+                width: fullscreenBaseWidth * canvasZoom,
+              })}
+            </View>
+            {isReadOnly ? null : (
+              <ScrollView
+                contentContainerStyle={styles.fullscreenToolbarContent}
+                showsVerticalScrollIndicator={false}
+                style={[
+                  styles.fullscreenToolbar,
+                  (showPlayerChoices ||
+                    showSkateChoices ||
+                    showPassChoices ||
+                    showPuckChoices ||
+                    showConeChoices) && styles.fullscreenToolbarExpanded,
+                ]}
+              >
+                {renderToolbar(true, true)}
+              </ScrollView>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
+        </ScrollView>
+        <KeyboardDismissAccessory />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1085,20 +1299,20 @@ function RinkBackground() {
       <Line stroke="#c63535" strokeWidth="8" x1="500" x2="500" y1="16" y2="484" />
       <Circle cx="500" cy="250" fill="none" r="72" stroke="#b9d0df" strokeWidth="5" />
       <Circle cx="500" cy="250" fill="#c63535" r="8" />
-      <Line stroke="#2f68ad" strokeWidth="10" x1="330" x2="330" y1="16" y2="484" />
-      <Line stroke="#2f68ad" strokeWidth="10" x1="670" x2="670" y1="16" y2="484" />
+      <Line stroke="#2f68ad" strokeWidth="10" x1="390" x2="390" y1="16" y2="484" />
+      <Line stroke="#2f68ad" strokeWidth="10" x1="610" x2="610" y1="16" y2="484" />
       <Line stroke="#c63535" strokeWidth="5" x1="115" x2="115" y1="16" y2="484" />
       <Line stroke="#c63535" strokeWidth="5" x1="885" x2="885" y1="16" y2="484" />
-      <Ellipse cx="210" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
-      <Ellipse cx="210" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
-      <Ellipse cx="790" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
-      <Ellipse cx="790" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
-      <Circle cx="210" cy="155" fill="#c63535" r="6" />
-      <Circle cx="210" cy="345" fill="#c63535" r="6" />
-      <Circle cx="790" cy="155" fill="#c63535" r="6" />
-      <Circle cx="790" cy="345" fill="#c63535" r="6" />
-      <Rect fill="none" height="86" rx="14" stroke="#8db0c7" strokeWidth="5" width="54" x="36" y="207" />
-      <Rect fill="none" height="86" rx="14" stroke="#8db0c7" strokeWidth="5" width="54" x="910" y="207" />
+      <Ellipse cx="225" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
+      <Ellipse cx="225" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
+      <Ellipse cx="775" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
+      <Ellipse cx="775" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" strokeWidth="5" />
+      <Circle cx="225" cy="155" fill="#c63535" r="6" />
+      <Circle cx="225" cy="345" fill="#c63535" r="6" />
+      <Circle cx="775" cy="155" fill="#c63535" r="6" />
+      <Circle cx="775" cy="345" fill="#c63535" r="6" />
+      <Path d="M90 207 H66 C48 207 38 225 38 250 C38 275 48 293 66 293 H90 Z" fill="none" stroke="#8db0c7" strokeLinejoin="round" strokeWidth="5" />
+      <Path d="M910 207 H934 C952 207 962 225 962 250 C962 275 952 293 934 293 H910 Z" fill="none" stroke="#8db0c7" strokeLinejoin="round" strokeWidth="5" />
     </Svg>
   );
 }
@@ -1248,7 +1462,9 @@ function PathShape({
   const arrowData = makeArrowData(getRenderablePathPoints(pathObject));
   const isPass = pathObject.type === 'pass_line';
   const isBackward =
-    pathObject.type === 'skate_path' && pathObject.style === 'backward';
+    pathObject.type === 'skate_path' &&
+    (pathObject.style === 'backward' ||
+      pathObject.style === 'freehand_backward');
 
   if (!pathData) {
     return null;
@@ -1315,6 +1531,7 @@ function PathShape({
 
 function DrillToolbar({
   compact,
+  fullscreen,
   selectedTool,
   showPlayerChoices,
   showSkateChoices,
@@ -1331,6 +1548,7 @@ function DrillToolbar({
   onToggleConeChoices,
 }: {
   compact: boolean;
+  fullscreen: boolean;
   selectedTool: ToolChoice | null;
   showPlayerChoices: boolean;
   showSkateChoices: boolean;
@@ -1351,10 +1569,16 @@ function DrillToolbar({
     selectedTool?.type === 'player_token' ? selectedTool.label : null;
 
   return (
-    <View style={[styles.toolbar, compact && styles.compactToolbar]}>
+    <View style={[styles.toolbar, compact && styles.compactToolbar, fullscreen && styles.fullscreenDrillToolbar]}>
       {showSkateChoices ? (
         <View style={styles.pathChoicePanel}>
-          {(['straight', 'curved', 'backward', 'freehand'] as PathStyle[]).map(
+          {([
+            'straight',
+            'curved',
+            'backward',
+            'freehand',
+            'freehand_backward',
+          ] as PathStyle[]).map(
             (style) => (
               <Pressable
                 accessibilityRole="button"
@@ -1435,9 +1659,10 @@ function DrillToolbar({
           />
         </View>
       ) : null}
-      <View style={[styles.toolbarRow, compact && styles.compactToolbarRow]}>
+      <View style={[styles.toolbarRow, compact && styles.compactToolbarRow, fullscreen && styles.fullscreenToolbarRow]}>
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="player"
           isSelected={selectedTool?.type === 'player_token'}
           label={t('drillEditor.tools.playerToken')}
@@ -1446,6 +1671,7 @@ function DrillToolbar({
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="skate"
           isSelected={selectedTool?.type === 'skate_path'}
           label={t('drillEditor.tools.skatePath')}
@@ -1454,6 +1680,7 @@ function DrillToolbar({
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="pass"
           isSelected={selectedTool?.type === 'pass_line'}
           label={t('drillEditor.tools.passLine')}
@@ -1462,14 +1689,16 @@ function DrillToolbar({
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="puck"
           isSelected={selectedTool?.type === 'puck'}
           label={t('drillEditor.tools.puck')}
           onLongPress={onTogglePuckChoices}
-          onPress={() => onSelectTool({ type: 'puck', variant: 'single' })}
+          onPress={onTogglePuckChoices}
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="cone"
           isSelected={selectedTool?.type === 'cone'}
           label={t('drillEditor.tools.cone')}
@@ -1478,6 +1707,7 @@ function DrillToolbar({
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="net"
           isSelected={selectedTool?.type === 'net'}
           label={t('drillEditor.tools.net')}
@@ -1485,6 +1715,7 @@ function DrillToolbar({
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="text"
           isSelected={selectedTool?.type === 'text'}
           label={t('drillEditor.tools.textLabel')}
@@ -1492,6 +1723,7 @@ function DrillToolbar({
         />
         <ToolButton
           compact={compact}
+          iconOnly={fullscreen}
           icon="zone"
           isSelected={selectedTool?.type === 'shaded_zone'}
           label={t('drillEditor.tools.shadedZone')}
@@ -1561,6 +1793,7 @@ function VariantChoicePanel({
 function ToolButton({
   compact,
   icon,
+  iconOnly,
   isSelected,
   label,
   onLongPress,
@@ -1568,6 +1801,7 @@ function ToolButton({
 }: {
   compact: boolean;
   icon: PracticeToolIconName;
+  iconOnly: boolean;
   isSelected: boolean;
   label: string;
   onLongPress?: () => void;
@@ -1583,6 +1817,7 @@ function ToolButton({
       style={[
         styles.toolButton,
         compact && styles.compactToolButton,
+        iconOnly && styles.iconOnlyToolButton,
         isSelected && styles.toolButtonSelected,
       ]}
     >
@@ -1593,9 +1828,11 @@ function ToolButton({
           size={28}
         />
       </View>
-      <Text style={[styles.toolLabel, isSelected && styles.toolLabelSelected]}>
-        {label}
-      </Text>
+      {iconOnly ? null : (
+        <Text style={[styles.toolLabel, isSelected && styles.toolLabelSelected]}>
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -1761,9 +1998,20 @@ function ObjectShape({ object }: { object: PlacedDrillObject }) {
     if (object.variant === 'group') {
       return (
         <View style={styles.puckGroup}>
-          <View style={[styles.puck, { backgroundColor: object.color }]} />
-          <View style={[styles.puck, { backgroundColor: object.color }]} />
-          <View style={[styles.puck, { backgroundColor: object.color }]} />
+          {Array.from({ length: 11 }, (_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.puck,
+                styles.puckPileItem,
+                {
+                  backgroundColor: object.color,
+                  left: 3 + (index % 4) * 7 + (Math.floor(index / 4) % 2) * 3,
+                  top: 5 + Math.floor(index / 4) * 7,
+                },
+              ]}
+            />
+          ))}
         </View>
       );
     }
@@ -1796,19 +2044,15 @@ function ObjectShape({ object }: { object: PlacedDrillObject }) {
   return (
     <Svg height={32} viewBox="0 0 44 34" width={42}>
       <Path
-        d="M8 9 L36 9 L40 27 L4 27 Z"
+        d="M7 5 V29 H21 C33 29 39 24 39 17 C39 10 33 5 21 5 Z"
         fill="#ffffff"
         opacity={0.95}
         stroke={object.color}
         strokeLinejoin="round"
         strokeWidth={3}
       />
-      <Line stroke="#9db2c1" strokeWidth={1.5} x1="10" x2="34" y1="14" y2="14" />
-      <Line stroke="#9db2c1" strokeWidth={1.5} x1="8" x2="36" y1="19" y2="19" />
-      <Line stroke="#9db2c1" strokeWidth={1.5} x1="15" x2="11" y1="10" y2="27" />
-      <Line stroke="#9db2c1" strokeWidth={1.5} x1="22" x2="22" y1="10" y2="27" />
-      <Line stroke="#9db2c1" strokeWidth={1.5} x1="29" x2="33" y1="10" y2="27" />
-      <Rect fill={object.color} height={5} rx={2} width={34} x={5} y={6} />
+      <Path d="M8 11 H31 M8 17 H38 M8 23 H31 M15 6 V29 M23 6 C20 13 20 21 23 28" fill="none" stroke="#9db2c1" strokeWidth={1.4} />
+      <Rect fill={object.color} height={28} rx={2} width={5} x={4} y={3} />
     </Svg>
   );
 }
@@ -2072,7 +2316,8 @@ function isPathStyle(value: unknown): value is PathStyle {
     value === 'straight' ||
     value === 'curved' ||
     value === 'backward' ||
-    value === 'freehand'
+    value === 'freehand' ||
+    value === 'freehand_backward'
   );
 }
 
@@ -2159,7 +2404,10 @@ function makePathData(pathObject: PathDrillObject) {
     return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
   }
 
-  if (pathObject.style === 'freehand') {
+  if (
+    pathObject.style === 'freehand' ||
+    pathObject.style === 'freehand_backward'
+  ) {
     return makePointLineData(points);
   }
 
@@ -2194,8 +2442,8 @@ function makeArrowData(points: PathPoint[]) {
   }
 
   const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
-  const arrowLength = 22;
-  const arrowWidth = 14;
+  const arrowLength = 38;
+  const arrowWidth = 26;
   const baseX = endPoint.x - Math.cos(angle) * arrowLength;
   const baseY = endPoint.y - Math.sin(angle) * arrowLength;
   const perpendicularX = Math.cos(angle + Math.PI / 2) * arrowWidth * 0.5;
@@ -2368,11 +2616,33 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   canvasCard: {
+    ...shadows.subtle,
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.lg,
     borderWidth: 1,
     padding: spacing.control,
+  },
+  canvasHeadingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  canvasHint: {
+    color: colors.frostSteel,
+    flex: 1,
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+    minWidth: 180,
+  },
+  canvasStage: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+  },
+  canvasSurface: {
+    flex: 1,
   },
   compactMetadata: {
     alignItems: 'center',
@@ -2434,6 +2704,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   inlineEditor: {
+    ...shadows.subtle,
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.md,
@@ -2462,6 +2733,80 @@ const styles = StyleSheet.create({
   descriptionInput: {
     minHeight: sizes.multiline,
     textAlignVertical: 'top',
+  },
+  flex: {
+    flex: 1,
+  },
+  fullscreenBody: {
+    flex: 1,
+    position: 'relative',
+  },
+  fullscreenCanvasViewport: {
+    alignItems: 'center',
+    backgroundColor: colors.rinkSurface,
+    flex: 1,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    padding: spacing.xs,
+  },
+  fullscreenHeader: {
+    alignItems: 'center',
+    backgroundColor: colors.rinkNavy,
+    borderBottomColor: colors.frostSteel,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'space-between',
+    minHeight: 54,
+    paddingHorizontal: spacing.md,
+  },
+  fullscreenIconButton: {
+    alignItems: 'center',
+    backgroundColor: colors.rinkSurface,
+    borderRadius: radii.md,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  fullscreenRoot: {
+    backgroundColor: colors.rinkNavy,
+    flex: 1,
+  },
+  fullscreenDrillToolbar: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: spacing.xs,
+    width: '100%',
+  },
+  fullscreenTitle: {
+    color: iceWhite,
+    flex: 1,
+    fontFamily: fonts.display,
+    fontSize: fontSizes.displayMd,
+    fontWeight: '700',
+  },
+  fullscreenToolbar: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    bottom: spacing.sm,
+    position: 'absolute',
+    right: spacing.sm,
+    top: spacing.sm,
+    width: 72,
+  },
+  fullscreenToolbarExpanded: {
+    width: 232,
+  },
+  fullscreenToolbarContent: {
+    alignItems: 'center',
+    paddingBottom: spacing.xl,
+  },
+  fullscreenToolbarRow: {
+    alignItems: 'center',
+    flexDirection: 'column',
+    flexWrap: 'nowrap',
   },
   eyebrow: {
     color: colors.hornAmber,
@@ -2509,6 +2854,11 @@ const styles = StyleSheet.create({
     minWidth: 64,
     padding: spacing.xs,
   },
+  iconOnlyToolButton: {
+    minHeight: 52,
+    minWidth: 52,
+    padding: spacing.xs,
+  },
   object: {
     alignItems: 'center',
     height: OBJECT_SIZE,
@@ -2534,10 +2884,6 @@ const styles = StyleSheet.create({
   playerChoiceSelected: {
     borderColor: goalRed,
     borderWidth: 3,
-    shadowColor: goalRed,
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
   },
   playerChoiceRow: {
     flexDirection: 'row',
@@ -2612,9 +2958,12 @@ const styles = StyleSheet.create({
     width: sizes.sm,
   },
   puckGroup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 2,
+    height: 28,
+    position: 'relative',
+    width: 34,
+  },
+  puckPileItem: {
+    position: 'absolute',
   },
   publishCard: {
     alignItems: 'center',
@@ -2633,6 +2982,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   selectedBar: {
+    ...shadows.subtle,
     alignItems: 'center',
     backgroundColor: colors.card,
     borderColor: colors.border,
@@ -2648,6 +2998,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.rinkNavy,
     flex: 1,
   },
+  scrollRail: {
+    alignItems: 'center',
+    backgroundColor: colors.rinkSurface,
+    borderLeftColor: colors.frostSteel,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'space-between',
+    minHeight: 96,
+    paddingVertical: spacing.sm,
+    width: 36,
+  },
+  scrollRailText: {
+    color: colors.frostSteel,
+    fontSize: 9,
+    fontWeight: '800',
+    transform: [{ rotate: '90deg' }],
+  },
   selectedText: {
     color: colors.textPrimary,
     flex: 1,
@@ -2655,6 +3021,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   toolbar: {
+    ...shadows.subtle,
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.lg,
@@ -2666,6 +3033,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  zoomControls: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  zoomLabel: {
+    color: iceWhite,
+    fontSize: fontSizes.sm,
+    fontWeight: '800',
+    minWidth: 48,
+    textAlign: 'center',
   },
   toolButton: {
     alignItems: 'center',
@@ -2680,13 +3059,9 @@ const styles = StyleSheet.create({
     padding: spacing.lineGap,
   },
   toolButtonSelected: {
-    backgroundColor: colors.dangerSoft,
-    borderColor: goalRed,
-    shadowColor: goalRed,
-    shadowOffset: { height: 3, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: colors.cardPressed,
+    borderColor: '#2C353D',
+    borderTopColor: '#12161B',
   },
   toolIconBadge: {
     alignItems: 'center',
@@ -2697,7 +3072,7 @@ const styles = StyleSheet.create({
     width: 42,
   },
   toolIconBadgeSelected: {
-    backgroundColor: goalRed,
+    backgroundColor: '#2C353D',
   },
   toolLabel: {
     color: slateGrey,

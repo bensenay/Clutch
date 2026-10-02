@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
@@ -121,7 +122,7 @@ export function TeamFormScreen({ navigation }: Props) {
       description={t('teamForm.description')}
       title={t('teamForm.title')}
     >
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <FormField
           autoCapitalize="words"
           label={t('teamForm.nameLabel')}
@@ -150,7 +151,7 @@ export function TeamFormScreen({ navigation }: Props) {
           title={isSaving ? t('teamForm.saving') : t('teamForm.saveButton')}
           onPress={() => void createTeam()}
         />
-      </View>
+      </Card>
     </AppScreen>
   );
 }

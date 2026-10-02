@@ -17,6 +17,7 @@ export type AuthenticatedStackParamList = {
   SuperAdmin: undefined;
   PlayerForm: { playerId?: string; readOnly?: boolean } | undefined;
   GameForm: { gameId?: string; readOnly?: boolean } | undefined;
+  GamePlan: { gameId?: string } | undefined;
   LineupBuilder: { gameId: string; readOnly?: boolean };
   DrillLibrary: undefined;
   SchoolDrillLibrary: undefined;

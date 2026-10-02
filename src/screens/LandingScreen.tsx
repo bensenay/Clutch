@@ -20,6 +20,7 @@ export function LandingScreen({ navigation }: Props) {
         icon="log-in-outline"
         title={t('landing.signIn')}
         onPress={() => navigation.navigate('SignIn')}
+        variant="secondary"
       />
       <AppButton
         icon="rocket-outline"

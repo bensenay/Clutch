@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Card } from '../components/Card';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -37,10 +38,14 @@ type Props = NativeStackScreenProps<
 type SegmentForm = {
   order: number;
   drill_id: string | null;
+  secondary_drill_id: string | null;
+  secondary_notes: string;
   custom_title: string;
   duration_minutes: number;
   notes: string;
 };
+
+type DrillSlot = 'primary' | 'secondary';
 
 type DrillOption = {
   id: string;
@@ -98,9 +103,10 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
   const [exportError, setExportError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [openDrillPickerOrder, setOpenDrillPickerOrder] = useState<number | null>(
-    null,
-  );
+  const [openDrillPicker, setOpenDrillPicker] = useState<{
+    order: number;
+    slot: DrillSlot;
+  } | null>(null);
 
   const practiceQuery = useQuery({
     queryKey: ['practice-plan', practicePlanId],
@@ -231,7 +237,12 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     updates: Partial<
       Pick<
         SegmentForm,
-        'drill_id' | 'custom_title' | 'duration_minutes' | 'notes'
+        | 'drill_id'
+        | 'secondary_drill_id'
+        | 'secondary_notes'
+        | 'custom_title'
+        | 'duration_minutes'
+        | 'notes'
       >
     >,
   ) {
@@ -263,26 +274,39 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
     });
   }
 
-  function selectSegmentDrill(order: number, drill: DrillOption) {
+  function selectSegmentDrill(
+    order: number,
+    drill: DrillOption,
+    slot: DrillSlot,
+  ) {
     setSegments((currentSegments) =>
       currentSegments.map((segment) =>
         segment.order === order
           ? {
               ...segment,
-              drill_id: drill.id,
-              custom_title: segment.custom_title.trim()
-                ? segment.custom_title
-                : drill.name,
+              ...(slot === 'primary'
+                ? {
+                    drill_id: drill.id,
+                    custom_title: segment.custom_title.trim()
+                      ? segment.custom_title
+                      : drill.name,
+                  }
+                : { secondary_drill_id: drill.id }),
             }
           : segment,
       ),
     );
-    setOpenDrillPickerOrder(null);
+    setOpenDrillPicker(null);
   }
 
-  function clearSegmentDrill(order: number) {
-    updateSegment(order, { drill_id: null });
-    setOpenDrillPickerOrder(null);
+  function clearSegmentDrill(order: number, slot: DrillSlot) {
+    updateSegment(
+      order,
+      slot === 'primary'
+        ? { drill_id: null }
+        : { secondary_drill_id: null, secondary_notes: '' },
+    );
+    setOpenDrillPicker(null);
   }
 
   function openSegmentDrill(drill: DrillOption) {
@@ -325,6 +349,8 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
       segments.map((segment) => ({
         order: segment.order,
         drill_id: segment.drill_id,
+        secondary_drill_id: segment.secondary_drill_id,
+        secondary_notes: segment.secondary_notes.trim(),
         custom_title: segment.custom_title.trim(),
         duration_minutes: safeDuration(segment.duration_minutes),
         notes: segment.notes.trim(),
@@ -475,6 +501,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
         locale: i18n.language,
         drillById,
         segments: renumberSegments(segments),
+        teamName: activeTeam?.name ?? '',
         t,
         totalDuration,
       });
@@ -533,7 +560,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
           {t('practiceDetail.drillsLoadError')}
         </Text>
       ) : null}
-      <View style={appScreenStyles.card}>
+      <Card style={appScreenStyles.card}>
         <PracticeDateTimePicker
           calendarMonth={calendarMonth}
           disabled={isReadOnly}
@@ -552,8 +579,8 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
             })}
           </Text>
         </View>
-      </View>
-      <View style={appScreenStyles.card}>
+      </Card>
+      <Card style={appScreenStyles.card}>
         <View style={appScreenStyles.row}>
           <Text style={appScreenStyles.cardTitle}>
             {t('practiceDetail.segmentsTitle')}
@@ -563,6 +590,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
               icon="add-circle-outline"
               title={t('practiceDetail.addSegmentButton')}
               onPress={addSegment}
+              variant="secondary"
             />
           )}
         </View>
@@ -571,28 +599,41 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
             canMoveDown={index < segments.length - 1}
             canMoveUp={index > 0}
             drillOptions={drillOptions}
-            isDrillPickerOpen={openDrillPickerOrder === segment.order}
+            openDrillPickerSlot={
+              openDrillPicker?.order === segment.order
+                ? openDrillPicker.slot
+                : null
+            }
             isReadOnly={isReadOnly}
             key={segment.order}
             segment={segment}
             selectedDrill={
               segment.drill_id ? drillById.get(segment.drill_id) ?? null : null
             }
-            onClearDrill={() => clearSegmentDrill(segment.order)}
+            selectedSecondaryDrill={
+              segment.secondary_drill_id
+                ? drillById.get(segment.secondary_drill_id) ?? null
+                : null
+            }
+            onClearDrill={(slot) => clearSegmentDrill(segment.order, slot)}
             onOpenDrill={openSegmentDrill}
             onMoveDown={() => moveSegment(segment.order, 1)}
             onMoveUp={() => moveSegment(segment.order, -1)}
             onRemove={() => removeSegment(segment.order)}
-            onSelectDrill={(drill) => selectSegmentDrill(segment.order, drill)}
-            onToggleDrillPicker={() =>
-              setOpenDrillPickerOrder((currentOrder) =>
-                currentOrder === segment.order ? null : segment.order,
+            onSelectDrill={(drill, slot) =>
+              selectSegmentDrill(segment.order, drill, slot)
+            }
+            onToggleDrillPicker={(slot) =>
+              setOpenDrillPicker((current) =>
+                current?.order === segment.order && current.slot === slot
+                  ? null
+                  : { order: segment.order, slot },
               )
             }
             onUpdate={(updates) => updateSegment(segment.order, updates)}
           />
         ))}
-      </View>
+      </Card>
       {error ? <Text style={authStyles.error}>{error}</Text> : null}
       {exportError ? <Text style={authStyles.error}>{exportError}</Text> : null}
       {isReadOnly ? (
@@ -625,6 +666,7 @@ export function PracticePlanDetailScreen({ navigation, route }: Props) {
             : t('practiceDetail.exportButton')
         }
         onPress={() => void handleExport()}
+        variant="secondary"
       />
     </AppScreen>
   );
@@ -785,10 +827,11 @@ function SegmentEditor({
   canMoveDown,
   canMoveUp,
   drillOptions,
-  isDrillPickerOpen,
+  openDrillPickerSlot,
   isReadOnly,
   segment,
   selectedDrill,
+  selectedSecondaryDrill,
   onClearDrill,
   onOpenDrill,
   onMoveDown,
@@ -801,22 +844,28 @@ function SegmentEditor({
   canMoveDown: boolean;
   canMoveUp: boolean;
   drillOptions: DrillOption[];
-  isDrillPickerOpen: boolean;
+  openDrillPickerSlot: DrillSlot | null;
   isReadOnly: boolean;
   segment: SegmentForm;
   selectedDrill: DrillOption | null;
-  onClearDrill: () => void;
+  selectedSecondaryDrill: DrillOption | null;
+  onClearDrill: (slot: DrillSlot) => void;
   onOpenDrill: (drill: DrillOption) => void;
   onMoveDown: () => void;
   onMoveUp: () => void;
   onRemove: () => void;
-  onSelectDrill: (drill: DrillOption) => void;
-  onToggleDrillPicker: () => void;
+  onSelectDrill: (drill: DrillOption, slot: DrillSlot) => void;
+  onToggleDrillPicker: (slot: DrillSlot) => void;
   onUpdate: (
     updates: Partial<
       Pick<
         SegmentForm,
-        'drill_id' | 'custom_title' | 'duration_minutes' | 'notes'
+        | 'drill_id'
+        | 'secondary_drill_id'
+        | 'secondary_notes'
+        | 'custom_title'
+        | 'duration_minutes'
+        | 'notes'
       >
     >,
   ) => void;
@@ -891,33 +940,106 @@ function SegmentEditor({
                 ? t('practiceDetail.changeDrillButton')
                 : t('practiceDetail.linkDrillButton')
             }
-            onPress={onToggleDrillPicker}
+            onPress={() => onToggleDrillPicker('primary')}
+            variant="secondary"
           />
           {selectedDrill ? (
             <AppButton
               icon="close-outline"
               title={t('practiceDetail.clearDrillButton')}
-              onPress={onClearDrill}
+              onPress={() => onClearDrill('primary')}
               variant="secondary"
             />
           ) : null}
         </View>
       )}
-      {isDrillPickerOpen && !isReadOnly ? (
+      {selectedSecondaryDrill ? (
+        <View style={styles.concurrentDrillBlock}>
+          <Text style={styles.concurrentDrillLabel}>
+            {t('practiceDetail.concurrentDrillLabel')}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onOpenDrill(selectedSecondaryDrill)}
+            style={styles.linkedDrillCard}
+          >
+            <Text style={styles.linkedDrillTitle}>
+              {selectedSecondaryDrill.name}
+            </Text>
+            <Text style={styles.linkedDrillMeta}>
+              {selectedSecondaryDrill.source === 'team'
+                ? t('practiceDetail.teamDrillSource')
+                : t('practiceDetail.schoolDrillSource', {
+                    teamName: selectedSecondaryDrill.teamName,
+                  })}
+            </Text>
+          </Pressable>
+          <FormField
+            autoCapitalize="sentences"
+            editable={!isReadOnly}
+            label={t('practiceDetail.concurrentNotesLabel')}
+            multiline
+            onChangeText={(value) => onUpdate({ secondary_notes: value })}
+            placeholder={t('practiceDetail.concurrentNotesPlaceholder')}
+            style={styles.multiline}
+            value={segment.secondary_notes}
+          />
+        </View>
+      ) : null}
+      {isReadOnly ? null : (
+        <View style={styles.drillPickerControls}>
+          <AppButton
+            icon={selectedSecondaryDrill ? 'swap-horizontal-outline' : 'git-compare-outline'}
+            title={
+              selectedSecondaryDrill
+                ? t('practiceDetail.changeConcurrentDrillButton')
+                : t('practiceDetail.addConcurrentDrillButton')
+            }
+            onPress={() => onToggleDrillPicker('secondary')}
+            variant="secondary"
+          />
+          {selectedSecondaryDrill ? (
+            <AppButton
+              icon="close-outline"
+              title={t('practiceDetail.clearConcurrentDrillButton')}
+              onPress={() => onClearDrill('secondary')}
+              variant="secondary"
+            />
+          ) : null}
+        </View>
+      )}
+      {openDrillPickerSlot && !isReadOnly ? (
         <View style={styles.drillPickerPanel}>
+          <Text style={styles.drillPickerSlotTitle}>
+            {openDrillPickerSlot === 'primary'
+              ? t('practiceDetail.primaryDrillPickerTitle')
+              : t('practiceDetail.concurrentDrillPickerTitle')}
+          </Text>
           <DrillPickerSection
             drills={teamDrills}
             emptyLabel={t('practiceDetail.emptyTeamDrills')}
-            selectedDrillId={segment.drill_id}
+            selectedDrillId={
+              openDrillPickerSlot === 'primary'
+                ? segment.drill_id
+                : segment.secondary_drill_id
+            }
             title={t('practiceDetail.teamDrillsTitle')}
-            onSelectDrill={onSelectDrill}
+            onSelectDrill={(drill) =>
+              onSelectDrill(drill, openDrillPickerSlot)
+            }
           />
           <DrillPickerSection
             drills={schoolDrills}
             emptyLabel={t('practiceDetail.emptySchoolDrills')}
-            selectedDrillId={segment.drill_id}
+            selectedDrillId={
+              openDrillPickerSlot === 'primary'
+                ? segment.drill_id
+                : segment.secondary_drill_id
+            }
             title={t('practiceDetail.schoolDrillsTitle')}
-            onSelectDrill={onSelectDrill}
+            onSelectDrill={(drill) =>
+              onSelectDrill(drill, openDrillPickerSlot)
+            }
           />
         </View>
       ) : null}
@@ -969,6 +1091,7 @@ function SegmentEditor({
           icon="trash-outline"
           title={t('practiceDetail.removeSegmentButton')}
           onPress={onRemove}
+          variant="danger"
         />
       </View>
       )}
@@ -1024,6 +1147,7 @@ function buildPracticePlanExportHtml({
   drillById,
   locale,
   segments,
+  teamName,
   t,
   totalDuration,
 }: {
@@ -1031,9 +1155,11 @@ function buildPracticePlanExportHtml({
   drillById: Map<string, DrillOption>;
   locale: string;
   segments: SegmentForm[];
+  teamName: string;
   t: (key: string, values?: Record<string, unknown>) => string;
   totalDuration: number;
 }) {
+  let elapsedMinutes = 0;
   const rows = segments
     .map((segment) => {
       const linkedDrill = segment.drill_id
@@ -1046,6 +1172,35 @@ function buildPracticePlanExportHtml({
       const drillDiagram = linkedDrill
         ? buildDrillExportSvg(linkedDrill.canvas_data)
         : '';
+      const secondaryDrill = segment.secondary_drill_id
+        ? drillById.get(segment.secondary_drill_id)
+        : undefined;
+      const secondaryDiagram = secondaryDrill
+        ? buildDrillExportSvg(secondaryDrill.canvas_data)
+        : '';
+      const segmentStart = new Date(date.getTime() + elapsedMinutes * 60_000);
+      elapsedMinutes += safeDuration(segment.duration_minutes);
+      const segmentEnd = new Date(date.getTime() + elapsedMinutes * 60_000);
+      const drillCards = [
+        linkedDrill
+          ? `<div class="drill-card"><p class="drill-meta">${escapeHtml(
+              linkedDrill.name,
+            )}</p>${drillDiagram}</div>`
+          : '',
+        secondaryDrill
+          ? `<div class="drill-card"><p class="drill-meta">${escapeHtml(
+              t('practiceDetail.concurrentDrillPdfLabel', {
+                name: secondaryDrill.name,
+              }),
+            )}</p>${secondaryDiagram}${
+              segment.secondary_notes
+                ? `<div class="notes-block"><span class="notes-label">${escapeHtml(
+                    t('practiceDetail.concurrentNotesLabel'),
+                  )}</span><p>${escapeHtml(segment.secondary_notes)}</p></div>`
+                : ''
+            }</div>`
+          : '',
+      ].filter(Boolean).join('');
 
       return `
         <li>
@@ -1055,29 +1210,35 @@ function buildPracticePlanExportHtml({
               title: segmentTitle,
             }),
           )}</strong>
-          <span>${escapeHtml(
+          <span class="segment-time">${escapeHtml(
+            `${formatTime(segmentStart, locale)} – ${formatTime(segmentEnd, locale)}`,
+          )}</span>
+          <span class="segment-duration">${escapeHtml(
             t('practiceDetail.totalDurationValue', {
               duration: safeDuration(segment.duration_minutes),
             }),
           )}</span>
           ${
-            linkedDrill
-              ? `<p class="drill-meta">${escapeHtml(
+            linkedDrill || secondaryDrill
+              ? `<p class="drill-source">${escapeHtml(
                   t('practiceDetail.exportLinkedDrill', {
-                    name: linkedDrill.name,
+                    name: linkedDrill?.name ?? secondaryDrill?.name ?? '',
                     source:
-                      linkedDrill.source === 'team'
+                      (linkedDrill ?? secondaryDrill)?.source === 'team'
                         ? t('practiceDetail.teamDrillSource')
                         : t('practiceDetail.schoolDrillSource', {
-                            teamName: linkedDrill.teamName,
+                            teamName:
+                              (linkedDrill ?? secondaryDrill)?.teamName ?? '',
                           }),
                   }),
-                )}</p>${drillDiagram}`
+                )}</p><div class="drill-grid">${drillCards}</div>`
               : `<p class="badge">${escapeHtml(t('practiceDetail.textSegmentBadge'))}</p>`
           }
           ${
             segment.notes
-              ? `<p>${escapeHtml(segment.notes)}</p>`
+              ? `<div class="notes-block"><span class="notes-label">${escapeHtml(
+                  t('practiceDetail.segmentNotesLabel'),
+                )}</span><p>${escapeHtml(segment.notes)}</p></div>`
               : `<p class="muted">${escapeHtml(t('practiceDetail.exportNoNotes'))}</p>`
           }
         </li>
@@ -1101,33 +1262,54 @@ function buildPracticePlanExportHtml({
           h2 { color: ${slateGrey}; font-size: 16px; margin: 0 0 20px; }
           ul { margin: 0; padding: 0; }
           li {
+            background: #f4f8fb;
+            border: 1px solid #c7d6e0;
             border-left: 5px solid ${goalRed};
+            border-radius: 10px;
+            break-inside: avoid;
             list-style: none;
-            margin: 12px 0;
-            padding: 10px 12px;
+            margin: 16px 0;
+            padding: 14px 16px;
           }
           strong { display: block; font-size: 16px; }
           span { color: ${slateGrey}; display: block; font-size: 13px; margin-top: 2px; }
+          .segment-time { color: #254f6d; font-size: 14px; font-weight: 800; }
+          .segment-duration { color: #4a6578; font-weight: 700; }
           p { margin: 8px 0 0; white-space: pre-wrap; }
-          .badge, .drill-meta {
+          .badge, .drill-meta, .drill-source {
             color: ${goalRed};
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
           }
+          .drill-grid { display: flex; gap: 12px; margin-top: 8px; width: 100%; }
+          .drill-card { flex: 1; min-width: 0; }
+          .drill-card .drill-meta { margin: 0 0 5px; }
+          .notes-block {
+            background: #ffffff;
+            border: 1px solid #9fb3c1;
+            border-radius: 7px;
+            color: #0b1f33;
+            margin-top: 10px;
+            padding: 8px 10px;
+          }
+          .notes-block p { color: #0b1f33; font-size: 13px; font-weight: 600; margin: 3px 0 0; }
+          .notes-label { color: #254f6d; font-size: 11px; font-weight: 800; text-transform: uppercase; }
           .rink-svg {
             border: 1px solid #d5e4ee;
             border-radius: 10px;
             display: block;
             margin-top: 10px;
             max-width: 100%;
-            width: 520px;
+            width: 100%;
           }
           .muted { color: ${slateGrey}; }
         </style>
       </head>
       <body>
-        <h1>${escapeHtml(t('practiceDetail.exportTitle'))}</h1>
+        <h1>${escapeHtml(
+          t('practiceDetail.exportTitleForTeam', { teamName }),
+        )}</h1>
         <h2>${escapeHtml(formatSelectedDateTime(date, locale))} / ${escapeHtml(
           t('practiceDetail.totalDurationValue', { duration: totalDuration }),
         )}</h2>
@@ -1141,6 +1323,8 @@ function makeBlankSegment(order: number): SegmentForm {
   return {
     order,
     drill_id: null,
+    secondary_drill_id: null,
+    secondary_notes: '',
     custom_title: '',
     duration_minutes: DEFAULT_SEGMENT_DURATION,
     notes: '',
@@ -1154,6 +1338,9 @@ function normalizeSegments(value: unknown): SegmentForm[] {
     .map((segment, index) => ({
       order: numberValue(segment.order) ?? index + 1,
       drill_id: stringValue(segment.drill_id) || null,
+      secondary_drill_id:
+        stringValue(segment.secondary_drill_id) || null,
+      secondary_notes: stringValue(segment.secondary_notes),
       custom_title: stringValue(segment.custom_title),
       duration_minutes:
         numberValue(segment.duration_minutes) ?? DEFAULT_SEGMENT_DURATION,
@@ -1170,6 +1357,8 @@ function renumberSegments(segments: SegmentForm[]): SegmentForm[] {
   return segments.map((segment, index) => ({
     order: index + 1,
     drill_id: segment.drill_id,
+    secondary_drill_id: segment.secondary_drill_id,
+    secondary_notes: segment.secondary_notes,
     custom_title: segment.custom_title,
     duration_minutes: safeDuration(segment.duration_minutes),
     notes: segment.notes,
@@ -1186,25 +1375,20 @@ function buildDrillExportSvg(canvasData: unknown) {
       <line stroke="#c63535" stroke-width="8" x1="500" x2="500" y1="16" y2="484" />
       <circle cx="500" cy="250" fill="none" r="72" stroke="#b9d0df" stroke-width="5" />
       <circle cx="500" cy="250" fill="#c63535" r="8" />
-      <line stroke="#2f68ad" stroke-width="10" x1="330" x2="330" y1="16" y2="484" />
-      <line stroke="#2f68ad" stroke-width="10" x1="670" x2="670" y1="16" y2="484" />
+      <line stroke="#2f68ad" stroke-width="10" x1="390" x2="390" y1="16" y2="484" />
+      <line stroke="#2f68ad" stroke-width="10" x1="610" x2="610" y1="16" y2="484" />
       <line stroke="#c63535" stroke-width="5" x1="115" x2="115" y1="16" y2="484" />
       <line stroke="#c63535" stroke-width="5" x1="885" x2="885" y1="16" y2="484" />
-      <ellipse cx="210" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
-      <ellipse cx="210" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
-      <ellipse cx="790" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
-      <ellipse cx="790" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
-      <circle cx="210" cy="155" fill="#c63535" r="6" />
-      <circle cx="210" cy="345" fill="#c63535" r="6" />
-      <circle cx="790" cy="155" fill="#c63535" r="6" />
-      <circle cx="790" cy="345" fill="#c63535" r="6" />
-      <rect fill="none" height="86" rx="14" stroke="#8db0c7" stroke-width="5" width="54" x="36" y="207" />
-      <rect fill="none" height="86" rx="14" stroke="#8db0c7" stroke-width="5" width="54" x="910" y="207" />
-      <defs>
-        <marker id="arrow" markerHeight="8" markerWidth="8" orient="auto-start-reverse" refX="7" refY="4">
-          <path d="M 0 0 L 8 4 L 0 8 z" fill="context-stroke" />
-        </marker>
-      </defs>
+      <ellipse cx="225" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <ellipse cx="225" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <ellipse cx="775" cy="155" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <ellipse cx="775" cy="345" fill="none" rx="55" ry="48" stroke="#c63535" stroke-width="5" />
+      <circle cx="225" cy="155" fill="#c63535" r="6" />
+      <circle cx="225" cy="345" fill="#c63535" r="6" />
+      <circle cx="775" cy="155" fill="#c63535" r="6" />
+      <circle cx="775" cy="345" fill="#c63535" r="6" />
+      <path d="M90 207 H66 C48 207 38 225 38 250 C38 275 48 293 66 293 H90 Z" fill="none" stroke="#8db0c7" stroke-linejoin="round" stroke-width="5" />
+      <path d="M910 207 H934 C952 207 962 225 962 250 C962 275 952 293 934 293 H910 Z" fill="none" stroke="#8db0c7" stroke-linejoin="round" stroke-width="5" />
       ${renderedObjects}
     </svg>
   `;
@@ -1222,13 +1406,16 @@ function renderDrillObjectSvg(object: Record<string, unknown>) {
     }
 
     const pathData = makeSvgPathData(points);
+    const arrowData = makeSvgArrowData(points);
     const dash = type === 'pass_line' ? ' stroke-dasharray="18 12"' : '';
     const ticks =
-      type === 'skate_path' && stringValue(object.style) === 'backward'
+      type === 'skate_path' &&
+      (stringValue(object.style) === 'backward' ||
+        stringValue(object.style) === 'freehand_backward')
         ? makeSvgBackwardTicks(points, color)
         : '';
 
-    return `<path d="${pathData}" fill="none" marker-end="url(#arrow)" stroke="${color}"${dash} stroke-linecap="round" stroke-linejoin="round" stroke-width="8" />${ticks}`;
+    return `<path d="${pathData}" fill="none" stroke="${color}"${dash} stroke-linecap="round" stroke-linejoin="round" stroke-width="8" />${ticks}${arrowData ? `<path d="${arrowData}" fill="${color}" />` : ''}`;
   }
 
   if (type === 'shaded_zone') {
@@ -1254,6 +1441,13 @@ function renderDrillObjectSvg(object: Record<string, unknown>) {
   }
 
   if (type === 'puck') {
+    if (stringValue(object.variant) === 'group') {
+      return Array.from({ length: 11 }, (_, index) => {
+        const offsetX = (index % 4) * 9 + (Math.floor(index / 4) % 2) * 4 - 16;
+        const offsetY = Math.floor(index / 4) * 8 - 8;
+        return `<circle cx="${x + offsetX}" cy="${y + offsetY}" fill="${color}" r="5" stroke="#000000" stroke-width="1.5" />`;
+      }).join('');
+    }
     return `<circle cx="${x}" cy="${y}" fill="${color}" r="8" stroke="#000000" stroke-width="2" />`;
   }
 
@@ -1262,7 +1456,7 @@ function renderDrillObjectSvg(object: Record<string, unknown>) {
   }
 
   if (type === 'net') {
-    return `<path d="M ${x - 22} ${y - 12} L ${x + 22} ${y - 12} L ${x + 26} ${y + 16} L ${x - 26} ${y + 16} Z" fill="#ffffff" stroke="${color}" stroke-linejoin="round" stroke-width="4" /><line stroke="#9db2c1" stroke-width="2" x1="${x - 16}" x2="${x + 16}" y1="${y}" y2="${y}" /><rect fill="${color}" height="7" rx="3" width="44" x="${x - 22}" y="${y - 18}" />`;
+    return `<path d="M ${x - 22} ${y - 18} V ${y + 18} H ${x - 7} C ${x + 14} ${y + 18} ${x + 22} ${y + 11} ${x + 22} ${y} C ${x + 22} ${y - 11} ${x + 14} ${y - 18} ${x - 7} ${y - 18} Z" fill="#ffffff" stroke="${color}" stroke-linejoin="round" stroke-width="4" /><path d="M ${x - 20} ${y - 9} H ${x + 12} M ${x - 20} ${y} H ${x + 21} M ${x - 20} ${y + 9} H ${x + 12}" fill="none" stroke="#9db2c1" stroke-width="2" /><rect fill="${color}" height="40" rx="3" width="7" x="${x - 25}" y="${y - 20}" />`;
   }
 
   if (type === 'text') {
@@ -1319,12 +1513,46 @@ function makeSvgPathData(points: Array<{ x: number; y: number }>) {
   return `${pathData} L ${lastPoint.x} ${lastPoint.y}`;
 }
 
+function makeSvgArrowData(points: Array<{ x: number; y: number }>) {
+  if (points.length < 2) {
+    return '';
+  }
+
+  const endPoint = points[points.length - 1];
+  let startPoint = points[points.length - 2];
+
+  for (let index = points.length - 2; index >= 0; index -= 1) {
+    const candidate = points[index];
+    if (Math.hypot(endPoint.x - candidate.x, endPoint.y - candidate.y) > 4) {
+      startPoint = candidate;
+      break;
+    }
+  }
+
+  const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+  const arrowLength = 24;
+  const arrowWidth = 16;
+  const baseX = endPoint.x - Math.cos(angle) * arrowLength;
+  const baseY = endPoint.y - Math.sin(angle) * arrowLength;
+  const perpendicularX = Math.cos(angle + Math.PI / 2) * arrowWidth * 0.5;
+  const perpendicularY = Math.sin(angle + Math.PI / 2) * arrowWidth * 0.5;
+
+  return [
+    `M ${endPoint.x} ${endPoint.y}`,
+    `L ${baseX + perpendicularX} ${baseY + perpendicularY}`,
+    `L ${baseX - perpendicularX} ${baseY - perpendicularY}`,
+    'Z',
+  ].join(' ');
+}
+
 function makeSvgBackwardTicks(points: Array<{ x: number; y: number }>, color: string) {
   return points
-    .slice(1)
-    .filter((_point, index) => index % 2 === 0)
     .map((point, index) => {
-      const previousPoint = points[index];
+      if (index === 0 || index % 2 === 0) {
+        return '';
+      }
+
+      const previousPoint = points[index - 1];
       const distance = Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y);
 
       if (distance < 1) {
@@ -1473,6 +1701,18 @@ function escapeHtml(value: string) {
 }
 
 const styles = StyleSheet.create({
+  concurrentDrillBlock: {
+    backgroundColor: colors.warningSoft,
+    borderRadius: radii.md,
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  concurrentDrillLabel: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   datePicker: {
     gap: spacing.control,
   },
@@ -1503,7 +1743,7 @@ const styles = StyleSheet.create({
   drillBadge: {
     backgroundColor: colors.cardPressed,
     borderColor: goalRed,
-    borderRadius: radii.pill,
+    borderRadius: radii.chip,
     borderWidth: 1,
     paddingHorizontal: spacing.control,
     paddingVertical: spacing.formGap,
@@ -1559,6 +1799,11 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  drillPickerSlotTitle: {
+    color: goalRed,
+    fontSize: fontSizes.base,
+    fontWeight: '900',
   },
   linkedDrillCard: {
     backgroundColor: colors.cardPressed,
@@ -1637,7 +1882,7 @@ const styles = StyleSheet.create({
   selectorOption: {
     backgroundColor: colors.fieldBackground,
     borderColor: colors.border,
-    borderRadius: radii.pill,
+    borderRadius: radii.chip,
     borderWidth: 1,
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.control,

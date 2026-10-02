@@ -1,3 +1,4 @@
+import { SteelBar } from '../components/SteelBar';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AuthenticatedTabs } from './AuthenticatedTabs';
@@ -6,6 +7,7 @@ import { DirectorAssistantCoachesScreen } from '../screens/DirectorAssistantCoac
 import { DrillEditorScreen } from '../screens/DrillEditorScreen';
 import { DrillLibraryScreen } from '../screens/DrillLibraryScreen';
 import { GameFormScreen } from '../screens/GameFormScreen';
+import { GamePlanScreen } from '../screens/GamePlanScreen';
 import { LineupBuilderScreen } from '../screens/LineupBuilderScreen';
 import { DirectorSettingsScreen } from '../screens/DirectorSettingsScreen';
 import { PlayerFormScreen } from '../screens/PlayerFormScreen';
@@ -32,6 +34,7 @@ export function AuthenticatedStack() {
         contentStyle: { backgroundColor: rinkNavy },
         headerBackTitle: t('common.back'),
         headerShadowVisible: false,
+        headerBackground: () => <SteelBar />,
         headerStyle: { backgroundColor: rinkNavy },
         headerTintColor: iceWhite,
         headerTitleStyle: { fontFamily: fonts.display },
@@ -99,6 +102,11 @@ export function AuthenticatedStack() {
             ? t('gameForm.editHeaderTitle')
             : t('gameForm.addHeaderTitle'),
         })}
+      />
+      <Stack.Screen
+        component={GamePlanScreen}
+        name="GamePlan"
+        options={{ title: t('gamePlan.headerTitle') }}
       />
       <Stack.Screen
         component={LineupBuilderScreen}
